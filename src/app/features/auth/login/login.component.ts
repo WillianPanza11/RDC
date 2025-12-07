@@ -40,14 +40,12 @@ export class LoginComponent {
 
     this.authService.login(this.loginForm.value).subscribe({
       next: (response) => {
-        console.log('Login exitoso:', response);
         
         // Obtener la URL de retorno o redirigir al dashboard
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
         this.router.navigate([returnUrl]);
       },
       error: (error) => {
-        console.error('Error en login:', error);
         this.isLoading.set(false);
         
         // Manejar diferentes tipos de errores

@@ -1,0 +1,18 @@
+<div class="card">
+    <p-menubar [model]="items">
+        <ng-template #end>
+            <div class="flex items-center" style="gap: 2rem;">
+                <!-- Usuario con icono -->
+                <span class="flex items-center">
+                    <i class="pi pi-user"></i>
+                    <span style="margin-left: 0.75rem; font-weight: 700; font-size: 1.1rem;">{{
+                        authService.currentUser()?.username || 'Usuario' }}</span>
+                </span>
+
+                <!-- Botón de cerrar sesión -->
+                <p-button icon="pi pi-sign-out" label="Cerrar Sesión" severity="danger" (click)="logout()"
+                    [style]="{'margin-left': '1.5rem'}" />
+            </div>
+        </ng-template>
+    </p-menubar>
+</div>

@@ -19,7 +19,7 @@ export class AuthService {
 
   // Signals para el estado de autenticación
   private currentUserSignal = signal<AuthResponseDTO | null>(null);
-  
+
   // Computed signals
   public isAuthenticated = computed(() => this.currentUserSignal() !== null);
   public currentUser = computed(() => this.currentUserSignal());
@@ -41,18 +41,19 @@ export class AuthService {
     if (!this.isBrowser) {
       return; // No hacer nada en el servidor
     }
-    
+
     const token = this.getToken();
     const userData = localStorage.getItem(this.USER_KEY);
-    
+
     if (token && userData) {
       try {
         const user = JSON.parse(userData) as AuthResponseDTO;
         this.currentUserSignal.set(user);
       } catch (error) {
-        console.error('Error al cargar datos del usuario:', error);
         this.clearStorage();
       }
+    } else {
+      console.log('[AuthService] No token or userData found in localStorage');
     }
   }
 
@@ -65,7 +66,6 @@ export class AuthService {
         this.handleAuthResponse(response);
       }),
       catchError(error => {
-        console.error('Error en login:', error);
         return throwError(() => error);
       })
     );
@@ -80,7 +80,6 @@ export class AuthService {
         this.handleAuthResponse(response);
       }),
       catchError(error => {
-        console.error('Error en registro:', error);
         return throwError(() => error);
       })
     );
@@ -102,7 +101,7 @@ export class AuthService {
     if (!this.isBrowser) {
       return; // No guardar en servidor
     }
-    
+
     if (response.token) {
       localStorage.setItem(this.TOKEN_KEY, response.token);
     }
@@ -147,7 +146,6 @@ export class AuthService {
         this.handleAuthResponse(response);
       }),
       catchError(error => {
-        console.error('Error al refrescar token:', error);
         this.logout();
         return throwError(() => error);
       })
@@ -179,5 +177,101 @@ export class AuthService {
    */
   hasAnyRole(roles: string[]): boolean {
     return roles.some(role => this.hasRole(role));
+  }
+
+  /**
+   * Asegura que el estado de autenticación esté cargado desde localStorage
+   * Útil cuando se necesita verificar el estado antes de que se haya inicializado
+   */
+  ensureAuthStateLoaded(): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    // Si el signal está vacío pero hay datos en localStorage, cargar desde ahí
+    if (!this.currentUserSignal() && this.getToken()) {
+      this.loadUserFromStorage();
+    }
+  }
+
+  /**
+   * Verifica la autenticación de forma robusta, verificando tanto el signal como localStorage
+   * Útil para guards que necesitan verificar antes de que el estado esté completamente cargado
+   */
+  checkAuthentication(): boolean {
+    
+    if (!this.isBrowser) {
+      return false;
+    }
+
+    // Primero asegurar que el estado esté cargado
+    this.ensureAuthStateLoaded();
+
+    // Verificar el signal directamente
+    const currentUser = this.currentUserSignal();
+    
+    if (currentUser) {
+      const isAuth = this.isAuthenticated();
+      return isAuth;
+    }
+
+    // Si el signal está vacío, verificar directamente en localStorage
+    const token = this.getToken();
+    const userData = localStorage.getItem(this.USER_KEY);
+    
+    if (token && userData) {
+      // Intentar cargar desde storage una vez más
+      try {
+        const user = JSON.parse(userData) as AuthResponseDTO;
+        this.currentUserSignal.set(user);
+        const isAuth = this.isAuthenticated();
+        return isAuth;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Verifica si el token está expirado
+   * Decodifica el JWT y verifica la fecha de expiración
+   */
+  isTokenExpired(): boolean {
+    if (!this.isBrowser) {
+      return true;
+    }
+
+    const token = this.getToken();
+    if (!token) {
+      return true;
+    }
+
+    try {
+      // Decodificar el JWT (formato: header.payload.signature)
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        return true;
+      }
+
+      // Decodificar el payload (base64url)
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      
+      // Verificar si tiene exp (expiration time)
+      if (!payload.exp) {
+        return false; // Si no tiene exp, asumimos que no expira
+      }
+
+      // exp está en segundos, Date.now() está en milisegundos
+      const expirationTime = payload.exp * 1000;
+      const currentTime = Date.now();
+
+      // Verificar si está expirado (con un margen de 5 segundos)
+      return currentTime >= (expirationTime - 5000);
+    } catch (error) {
+      // Si hay error al decodificar, considerar expirado
+      return true;
+    }
   }
 }

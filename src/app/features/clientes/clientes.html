@@ -1,0 +1,172 @@
+<!-- header-->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+    <p-toolbar class="mb-6">
+        <ng-template #start>
+            <p-button label="Nuevo Cliente" icon="pi pi-plus" class="mr-2" (onClick)="openNew()" />
+        </ng-template>
+
+        <ng-template #end>
+            <p-button label="Exportar" icon="pi pi-upload" severity="secondary" (onClick)="exportCSV()" />
+        </ng-template>
+    </p-toolbar>
+
+    <p-table #dt [value]="clientes" [rows]="10" [columns]="cols" [paginator]="true"
+        [globalFilterFields]="['cedula', 'nombres', 'apellidos', 'email', 'telefono']"
+        [tableStyle]="{ 'min-width': '75rem' }" [(selection)]="selectedClientes" [rowHover]="true" dataKey="idCliente"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} clientes"
+        [showCurrentPageReport]="true">
+        <ng-template #caption>
+            <div class="flex items-center justify-between">
+                <h5 class="m-0">Gestión de Clientes</h5>
+                <p-iconfield>
+                    <p-inputicon class="pi pi-search" />
+                    <input pInputText type="text" (input)="dt.filterGlobal($event.target.value, 'contains')"
+                        placeholder="Buscar..." />
+                </p-iconfield>
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th pSortableColumn="cedula" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Cédula
+                        <p-sortIcon field="cedula" />
+                    </div>
+                </th>
+                <th pSortableColumn="nombres" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Nombres
+                        <p-sortIcon field="nombres" />
+                    </div>
+                </th>
+                <th pSortableColumn="apellidos" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Apellidos
+                        <p-sortIcon field="apellidos" />
+                    </div>
+                </th>
+                <th pSortableColumn="email" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Email
+                        <p-sortIcon field="email" />
+                    </div>
+                </th>
+                <th pSortableColumn="telefono" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Teléfono
+                        <p-sortIcon field="telefono" />
+                    </div>
+                </th>
+                <th pSortableColumn="estado" style="min-width: 10rem">
+                    <div class="flex items-center gap-2">
+                        Estado
+                        <p-sortIcon field="estado" />
+                    </div>
+                </th>
+                <th style="min-width: 12rem"></th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-cliente>
+            <tr>
+                <td>{{ cliente.cedula }}</td>
+                <td>{{ cliente.nombres }}</td>
+                <td>{{ cliente.apellidos }}</td>
+                <td>{{ cliente.email }}</td>
+                <td>{{ cliente.telefono }}</td>
+                <td>
+                    <p-tag [value]="cliente.estado" [severity]="getSeverity(cliente.estado)" />
+                </td>
+                <td>
+                    <p-button icon="pi pi-pencil" class="mr-2" [rounded]="true" [outlined]="true"
+                        (click)="editCliente(cliente)" />
+                    <p-button icon="pi pi-trash" severity="danger" [rounded]="true" [outlined]="true"
+                        (click)="deleteCliente(cliente)" />
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <p-dialog [(visible)]="clienteDialog" [style]="{ width: '550px' }" header="Detalles del Cliente" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-6">
+                        <label for="cedula" class="block font-bold mb-3">Cédula *</label>
+                        <input type="text" pInputText id="cedula" [(ngModel)]="cliente.cedula" required autofocus fluid
+                            [disabled]="clienteId ? true : false" />
+                        <small class="text-red-500" *ngIf="submitted && !cliente.cedula">La cédula es requerida.</small>
+                    </div>
+
+                    <br>
+                    <div class="col-span-6">
+                        <label for="telefono" class="block font-bold mb-3">Teléfono *</label>
+                        <input type="text" pInputText id="telefono" [(ngModel)]="cliente.telefono" required fluid />
+                        <small class="text-red-500" *ngIf="submitted && !cliente.telefono">El teléfono es
+                            requerido.</small>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <br>
+                    <div class="col-span-6">
+                        <label for="nombres" class="block font-bold mb-3">Nombres *</label>
+                        <input type="text" pInputText id="nombres" [(ngModel)]="cliente.nombres" required fluid />
+                        <small class="text-red-500" *ngIf="submitted && !cliente.nombres">Los nombres son
+                            requeridos.</small>
+                    </div>
+
+                    <br>
+                    <div class="col-span-6">
+                        <label for="apellidos" class="block font-bold mb-3">Apellidos *</label>
+                        <input type="text" pInputText id="apellidos" [(ngModel)]="cliente.apellidos" required fluid />
+                        <small class="text-red-500" *ngIf="submitted && !cliente.apellidos">Los apellidos son
+                            requeridos.</small>
+                    </div>
+
+                    <br>
+                    <div class="col-span-6">
+                        <label for="direccion" class="block font-bold mb-3">Dirección</label>
+                        <input type="text" pInputText id="direccion" [(ngModel)]="cliente.direccion" fluid />
+                        <small class="text-red-500" *ngIf="submitted && !cliente.direccion">La dirección es
+                            requerida.</small>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-6">
+                    <div class="grid grid-cols-12 gap-4">
+                        <br>
+                        <div>
+                            <label for="email" class="block font-bold mb-3">Email</label>
+                            <input type="email" pInputText id="email" [(ngModel)]="cliente.email" fluid />
+                        </div>
+
+                        <br>
+                        <div>
+                            <label for="fechaNacimiento" class="block font-bold mb-3">Fecha de Nacimiento</label>
+                            <input type="date" pInputText id="fechaNacimiento" [(ngModel)]="cliente.fechaNacimiento"
+                                fluid />
+                        </div>
+                        <!--Mostrar campo estado solo cuando se va a editar-->
+                        <br>
+                        @if (clienteId){
+                        <div>
+                            <label for="estado" class="block font-bold mb-3">Estado</label>
+                            <p-select [options]="estados" [(ngModel)]="selectedEstado" optionLabel="label"
+                                optionValue="value" placeholder="Seleccione un estado" class="w-full" />
+                        </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+            <p-button label="Guardar" icon="pi pi-check" (click)="saveCliente()" />
+        </ng-template>
+    </p-dialog>
+
+    <p-confirmDialog [style]="{ width: '450px' }" />
+</div>
