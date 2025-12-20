@@ -1,0 +1,10 @@
+/* hacer mas grande logo y texto */
+  ::ng-deep p-menubar .menu-logo a {
+    font-size: 1.8rem !important;
+    font-weight: 600 !important;
+  }
+  
+  ::ng-deep p-menubar .menu-logo span {
+    font-size: 1.8rem !important;
+    font-weight: 600 !important;
+  }

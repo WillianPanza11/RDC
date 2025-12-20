@@ -5,6 +5,8 @@ import { HttpClient } from '@angular/common/http';
 
 import { AutenticacinService } from './api/autenticacin.service';
 import { ClienteControllerService } from './api/clienteController.service';
+import { CuentasDeAhorroService } from './api/cuentasDeAhorro.service';
+import { TransaccionesDeAhorroService } from './api/transaccionesDeAhorro.service';
 
 @NgModule({
   imports:      [],
@@ -12,7 +14,9 @@ import { ClienteControllerService } from './api/clienteController.service';
   exports:      [],
   providers: [
     AutenticacinService,
-    ClienteControllerService ]
+    ClienteControllerService,
+    CuentasDeAhorroService,
+    TransaccionesDeAhorroService ]
 })
 export class ApiModule {
     public static forRoot(configurationFactory: () => Configuration): ModuleWithProviders<ApiModule> {

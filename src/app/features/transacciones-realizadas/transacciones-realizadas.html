@@ -1,0 +1,155 @@
+<!-- header-->
+<app-header></app-header>
+
+<!-- body-->
+<div class="card">
+    <p-toast />
+
+    <p-table #dt [value]="transaccionesFiltradas" [rows]="10" [columns]="cols" [paginator]="true"
+        [globalFilterFields]="['descripcion', 'tipoTransaccion', 'metodoPago']" [tableStyle]="{ 'min-width': '75rem' }"
+        [rowHover]="true" dataKey="idTransaccion"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} transacciones"
+        [showCurrentPageReport]="true">
+        <ng-template #caption>
+            <div style="display: flex; align-items: flex-end; justify-content: space-between; width: 100%; max-width: 100%; box-sizing: border-box;">
+                <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600; flex-shrink: 0; white-space: nowrap; margin-right: 16px;">Listado de Transacciones</h1>
+                <!-- Filtros organizados horizontalmente a la derecha -->
+                <div style="display: flex; flex-direction: row; gap: 8px; align-items: flex-end; flex-shrink: 1; min-width: 0; flex-wrap: wrap; justify-content: flex-end;">
+                    <div style="flex-shrink: 0;">
+                        <label for="cuenta" class="block font-bold mb-2 text-sm" style="white-space: nowrap;">Cuenta</label>
+                        <p-select 
+                            [options]="cuentas"
+                            [(ngModel)]="cuentaSeleccionada"
+                            optionLabel="numeroCuenta"
+                            optionValue="idCuenta"
+                            placeholder="Todas"
+                            style="width: 140px;"
+                            [filter]="true"
+                            filterBy="numeroCuenta,nombreCliente"
+                            [showClear]="true"
+                            (onChange)="aplicarFiltros()">
+                            <ng-template let-cuenta pTemplate="item">
+                                <div>
+                                    {{ cuenta.numeroCuenta }} - {{ cuenta.nombreCliente }}
+                                </div>
+                            </ng-template>
+                        </p-select>
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <label for="tipoTransaccion" class="block font-bold mb-2 text-sm" style="white-space: nowrap;">Tipo</label>
+                        <p-select 
+                            [options]="tiposTransaccion"
+                            [(ngModel)]="tipoTransaccionSeleccionado"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Todos"
+                            style="width: 120px;"
+                            [showClear]="true"
+                            (onChange)="aplicarFiltros()" />
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <label for="fechaInicio" class="block font-bold mb-2 text-sm" style="white-space: nowrap;">Fecha Inicio</label>
+                        <input
+                            type="date"
+                            pInputText
+                            id="fechaInicio"
+                            [(ngModel)]="fechaInicio"
+                            style="width: 130px;"
+                            (change)="aplicarFiltros()" />
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <label for="fechaFin" class="block font-bold mb-2 text-sm" style="white-space: nowrap;">Fecha Fin</label>
+                        <input
+                            type="date"
+                            pInputText
+                            id="fechaFin"
+                            [(ngModel)]="fechaFin"
+                            style="width: 130px;"
+                            (change)="aplicarFiltros()" />
+                    </div>
+                    <div style="flex-shrink: 0; margin-top: 24px;">
+                        <p-button 
+                            label="Limpiar"
+                            icon="pi pi-filter-slash"
+                            severity="secondary"
+                            (onClick)="limpiarFiltros()" />
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th pSortableColumn="fechaTransaccion" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Fecha
+                        <p-sortIcon field="fechaTransaccion" />
+                    </div>
+                </th>
+                <th pSortableColumn="idCuenta" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Número de Cuenta
+                        <p-sortIcon field="idCuenta" />
+                    </div>
+                </th>
+                <th pSortableColumn="tipoTransaccion" style="min-width:10rem">
+                    <div class="flex items-center gap-2">
+                        Tipo
+                        <p-sortIcon field="tipoTransaccion" />
+                    </div>
+                </th>
+                <th pSortableColumn="descripcion" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Descripción
+                        <p-sortIcon field="descripcion" />
+                    </div>
+                </th>
+                <th pSortableColumn="monto" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Monto
+                        <p-sortIcon field="monto" />
+                    </div>
+                </th>
+                <th pSortableColumn="saldoAnterior" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Saldo Anterior
+                        <p-sortIcon field="saldoAnterior" />
+                    </div>
+                </th>
+                <th pSortableColumn="saldoNuevo" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Saldo Nuevo
+                        <p-sortIcon field="saldoNuevo" />
+                    </div>
+                </th>
+                <th pSortableColumn="metodoPago" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Método de Pago
+                        <p-sortIcon field="metodoPago" />
+                    </div>
+                </th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-transaccion>
+            <tr>
+                <td>{{ transaccion.fechaTransaccion | date:'short' }}</td>
+                <td>{{ getNombreCuenta(transaccion.idCuenta) }}</td>
+                <td>
+                    <p-tag [value]="transaccion.tipoTransaccion"
+                        [severity]="getSeverity(transaccion.tipoTransaccion)" />
+                </td>
+                <td>{{ transaccion.descripcion }}</td>
+                <td>{{ transaccion.monto | number:'1.2-2' }}</td>
+                <td>{{ transaccion.saldoAnterior | number:'1.2-2' }}</td>
+                <td>{{ transaccion.saldoNuevo | number:'1.2-2' }}</td>
+                <td>{{ transaccion.metodoPago || '-' }}</td>
+            </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="8" class="text-center p-4">
+                    No se encontraron transacciones
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>

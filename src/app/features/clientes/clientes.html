@@ -19,7 +19,7 @@
         [showCurrentPageReport]="true">
         <ng-template #caption>
             <div class="flex items-center justify-between">
-                <h5 class="m-0">Gestión de Clientes</h5>
+                <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600;">Gestión de Clientes</h1>
                 <p-iconfield>
                     <p-inputicon class="pi pi-search" />
                     <input pInputText type="text" (input)="dt.filterGlobal($event.target.value, 'contains')"
@@ -95,14 +95,21 @@
                     <div class="col-span-6">
                         <label for="cedula" class="block font-bold mb-3">Cédula *</label>
                         <input type="text" pInputText id="cedula" [(ngModel)]="cliente.cedula" required autofocus fluid
-                            [disabled]="clienteId ? true : false" />
+                            [disabled]="clienteId ? true : false" 
+                            (keypress)="soloNumeros($event)" 
+                            (input)="limpiarSoloNumeros($event)"
+                            maxlength="10" />
                         <small class="text-red-500" *ngIf="submitted && !cliente.cedula">La cédula es requerida.</small>
+                        <small class="text-red-500" *ngIf="submitted && cliente.cedula && !ValidarCedulaValida(cliente.cedula)">La cédula debe tener 10 dígitos.</small>
                     </div>
 
                     <br>
                     <div class="col-span-6">
                         <label for="telefono" class="block font-bold mb-3">Teléfono *</label>
-                        <input type="text" pInputText id="telefono" [(ngModel)]="cliente.telefono" required fluid />
+                        <input type="text" pInputText id="telefono" [(ngModel)]="cliente.telefono" required fluid 
+                            (keypress)="soloNumeros($event)" 
+                            (input)="limpiarSoloNumeros($event)"
+                            maxlength="15" />
                         <small class="text-red-500" *ngIf="submitted && !cliente.telefono">El teléfono es
                             requerido.</small>
                     </div>
@@ -112,17 +119,23 @@
                     <br>
                     <div class="col-span-6">
                         <label for="nombres" class="block font-bold mb-3">Nombres *</label>
-                        <input type="text" pInputText id="nombres" [(ngModel)]="cliente.nombres" required fluid />
+                        <input type="text" pInputText id="nombres" [(ngModel)]="cliente.nombres" required fluid 
+                            (keypress)="soloLetras($event)" 
+                            (input)="limpiarSoloLetras($event)" />
                         <small class="text-red-500" *ngIf="submitted && !cliente.nombres">Los nombres son
                             requeridos.</small>
+                        <small class="text-gray-500">Solo se permiten letras y espacios</small>
                     </div>
 
                     <br>
                     <div class="col-span-6">
                         <label for="apellidos" class="block font-bold mb-3">Apellidos *</label>
-                        <input type="text" pInputText id="apellidos" [(ngModel)]="cliente.apellidos" required fluid />
+                        <input type="text" pInputText id="apellidos" [(ngModel)]="cliente.apellidos" required fluid 
+                            (keypress)="soloLetras($event)" 
+                            (input)="limpiarSoloLetras($event)" />
                         <small class="text-red-500" *ngIf="submitted && !cliente.apellidos">Los apellidos son
                             requeridos.</small>
+                        <small class="text-gray-500">Solo se permiten letras y espacios</small>
                     </div>
 
                     <br>

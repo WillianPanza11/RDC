@@ -21,6 +21,21 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'cuentas',
+    loadComponent: () => import('./features/cuentas/cuentas').then(m => m.Cuentas),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'transacciones-realizadas',
+    loadComponent: () => import('./features/transacciones-realizadas/transacciones-realizadas').then(m => m.TransaccionesRealizadas),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'prestamos',
+    loadComponent: () => import('./features/prestamos/prestamos').then(m => m.Prestamos),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: '/dashboard'
   }

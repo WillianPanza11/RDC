@@ -22,50 +22,43 @@ export class Header implements OnInit {
   ngOnInit() {
     this.items = [
       {
-        label: 'Banco del Cisne',
-        icon: 'pi pi-home',
+        //hacer mas grande logo y texto
+        label: 'Reina del Cisne',
+        icon: 'pi pi-building-columns',
+        iconStyle: { 'font-size': '2.5rem' },
+        styleClass: 'menu-logo', 
         routerLink: '/dashboard'
       },
       {
         label: 'Clientes',
-        icon: 'pi pi-user',
+        icon: 'pi pi-user-plus',
+        iconStyle: { 'font-size': '1.5rem' },
         routerLink: '/clientes'
       },
       {
         label: 'Cuentas',
-        icon: 'pi pi-search',
+        icon: 'pi pi-money-bill',
+        iconStyle: { 'font-size': '1.5rem' },
         items: [
           {
-            label: 'Components',
-            icon: 'pi pi-bolt'
+            label: 'Registros',
+            icon: 'pi pi-address-book',
+            iconStyle: { 'font-size': '1.5rem' },
+            routerLink: '/cuentas'
           },
           {
-            label: 'Blocks',
-            icon: 'pi pi-server'
-          },
-          {
-            label: 'UI Kit',
-            icon: 'pi pi-pencil'
-          },
-          {
-            label: 'Templates',
-            icon: 'pi pi-palette',
-            items: [
-              {
-                label: 'Apollo',
-                icon: 'pi pi-palette'
-              },
-              {
-                label: 'Ultima',
-                icon: 'pi pi-palette'
-              }
-            ]
+            label: 'Transacciones',
+            icon: 'pi pi-dollar',
+            iconStyle: { 'font-size': '1.5rem' },
+            routerLink: '/transacciones-realizadas'
           }
         ]
       },
       {
-        label: 'Contact',
-        icon: 'pi pi-envelope'
+        label: 'Prestamos',
+        icon: 'pi pi-wallet', 
+        iconStyle: { 'font-size': '1.5rem' },
+        routerLink: '/prestamos'
       }
     ]
   }
