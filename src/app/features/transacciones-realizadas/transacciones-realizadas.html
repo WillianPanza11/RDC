@@ -121,12 +121,13 @@
                         <p-sortIcon field="saldoNuevo" />
                     </div>
                 </th>
-                <th pSortableColumn="metodoPago" style="min-width:12rem">
+                <!--<th pSortableColumn="metodoPago" style="min-width:12rem">
                     <div class="flex items-center gap-2">
                         Método de Pago
                         <p-sortIcon field="metodoPago" />
                     </div>
                 </th>
+            -->
             </tr>
         </ng-template>
         <ng-template #body let-transaccion>
@@ -141,7 +142,7 @@
                 <td>{{ transaccion.monto | number:'1.2-2' }}</td>
                 <td>{{ transaccion.saldoAnterior | number:'1.2-2' }}</td>
                 <td>{{ transaccion.saldoNuevo | number:'1.2-2' }}</td>
-                <td>{{ transaccion.metodoPago || '-' }}</td>
+                <!--<td>{{ transaccion.metodoPago || '-' }}</td>-->
             </tr>
         </ng-template>
         <ng-template #emptymessage>

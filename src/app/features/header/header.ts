@@ -59,6 +59,12 @@ export class Header implements OnInit {
         icon: 'pi pi-wallet', 
         iconStyle: { 'font-size': '1.5rem' },
         routerLink: '/prestamos'
+      },
+      {
+        label: 'Pagos',
+        icon: 'pi pi-money-bill',
+        iconStyle: { 'font-size': '1.5rem' },
+        routerLink: '/pagos'
       }
     ]
   }

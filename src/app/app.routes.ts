@@ -36,6 +36,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'pagos',
+    loadComponent: () => import('./features/pagos/pagos').then(m => m.Pagos),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: '/dashboard'
   }

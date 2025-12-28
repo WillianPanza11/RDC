@@ -6,6 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { AutenticacinService } from './api/autenticacin.service';
 import { ClienteControllerService } from './api/clienteController.service';
 import { CuentasDeAhorroService } from './api/cuentasDeAhorro.service';
+import { PagosDePrstamosService } from './api/pagosDePrstamos.service';
+import { PrstamosService } from './api/prstamos.service';
 import { TransaccionesDeAhorroService } from './api/transaccionesDeAhorro.service';
 
 @NgModule({
@@ -16,6 +18,8 @@ import { TransaccionesDeAhorroService } from './api/transaccionesDeAhorro.servic
     AutenticacinService,
     ClienteControllerService,
     CuentasDeAhorroService,
+    PagosDePrstamosService,
+    PrstamosService,
     TransaccionesDeAhorroService ]
 })
 export class ApiModule {

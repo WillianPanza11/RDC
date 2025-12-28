@@ -1,0 +1,215 @@
+<!-- header-->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+    <p-toolbar class="mb-6">
+        <ng-template #start>
+            <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600;">Gestión de Pagos de Préstamos</h1>
+        </ng-template>
+
+        <ng-template #end>
+            <p-button label="Exportar" icon="pi pi-upload" severity="secondary" (onClick)="exportCSV()" />
+        </ng-template>
+    </p-toolbar>
+
+    <!-- Filtro por cliente -->
+    <div class="mb-4">
+        <label for="clienteFiltro" class="block font-bold mb-2">Filtrar por Cliente:</label>
+        <p-select [options]="clientesOptions" [(ngModel)]="clienteFiltro" optionLabel="label" 
+            optionValue="value" placeholder="Seleccione un cliente" class="w-full md:w-20rem" 
+            (ngModelChange)="onClienteFiltroChange()" [filter]="true" filterPlaceholder="Buscar por nombre o cédula..." />
+    </div>
+
+    <p-table #dt [value]="pagos" [rows]="10" [columns]="cols" [paginator]="true"
+        [globalFilterFields]="['nombreCliente', 'cedula', 'numeroCuentaPrestamo', 'numeroCuotaPagada', 'metodoPago', 'referencia']"
+        [tableStyle]="{ 'min-width': '75rem' }" [rowHover]="true" dataKey="idPago"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos"
+        [showCurrentPageReport]="true">
+        <ng-template #caption>
+            <div class="flex items-center justify-between">
+                <h2 class="m-0" style="font-size: 1.2rem; font-weight: 500;">Listado de Pagos</h2>
+                <p-iconfield>
+                    <p-inputicon class="pi pi-search" />
+                    <input pInputText type="text" (input)="dt.filterGlobal($event.target.value, 'contains')"
+                        placeholder="Buscar..." />
+                </p-iconfield>
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th pSortableColumn="nombreCliente" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Cliente
+                        <p-sortIcon field="nombreCliente" />
+                    </div>
+                </th>
+                <th pSortableColumn="cedula" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Cédula
+                        <p-sortIcon field="cedula" />
+                    </div>
+                </th>
+                <th pSortableColumn="numeroCuentaPrestamo" style="min-width:14rem">
+                    <div class="flex items-center gap-2">
+                        Número de Cuenta
+                        <p-sortIcon field="numeroCuentaPrestamo" />
+                    </div>
+                </th>
+                <th pSortableColumn="numeroCuotaPagada" style="min-width:8rem">
+                    <div class="flex items-center gap-2">
+                        Cuota
+                        <p-sortIcon field="numeroCuotaPagada" />
+                    </div>
+                </th>
+                <th pSortableColumn="montoPagado" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Monto Pagado
+                        <p-sortIcon field="montoPagado" />
+                    </div>
+                </th>
+                <th pSortableColumn="capitalPagado" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Capital
+                        <p-sortIcon field="capitalPagado" />
+                    </div>
+                </th>
+                <th pSortableColumn="interesPagado" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Interés
+                        <p-sortIcon field="interesPagado" />
+                    </div>
+                </th>
+                <th pSortableColumn="mora" style="min-width:10rem">
+                    <div class="flex items-center gap-2">
+                        Mora
+                        <p-sortIcon field="mora" />
+                    </div>
+                </th>
+                <th pSortableColumn="metodoPago" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Método de Pago
+                        <p-sortIcon field="metodoPago" />
+                    </div>
+                </th>
+                <th pSortableColumn="fechaPago" style="min-width: 14rem">
+                    <div class="flex items-center gap-2">
+                        Fecha de Pago
+                        <p-sortIcon field="fechaPago" />
+                    </div>
+                </th>
+                <th style="min-width: 8rem"></th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-pago>
+            <tr>
+                <td>{{ pago.nombreCliente }}</td>
+                <td>{{ pago.cedula || 'N/A' }}</td>
+                <td>{{ pago.numeroCuentaPrestamo || 'N/A' }}</td>
+                <td>{{ pago.numeroCuotaPagada }}</td>
+                <td>{{ formatCurrency(pago.montoPagado) }}</td>
+                <td>{{ formatCurrency(pago.capitalPagado) }}</td>
+                <td>{{ formatCurrency(pago.interesPagado) }}</td>
+                <td>{{ formatCurrency(pago.mora) }}</td>
+                <td>{{ getMetodoPagoLabel(pago.metodoPago) }}</td>
+                <td>{{ formatDate(pago.fechaPago) }}</td>
+                <td>
+                    <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
+                        (click)="verDetalles(pago)" pTooltip="Ver detalles del pago" />
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <!-- Dialog para ver detalles de pagos del préstamo -->
+    <p-dialog [(visible)]="detallesDialog" [style]="{ width: '900px' }" header="Pagos del Préstamo" [modal]="true">
+        <ng-template #content>
+            <div *ngIf="pagoSeleccionado" class="flex flex-col gap-6">
+                <div class="p-4 bg-blue-50 rounded">
+                    <h3 class="font-bold mb-3">Información del Préstamo</h3>
+                    <div class="grid grid-cols-3 gap-3 text-sm">
+                        <div><strong>ID Préstamo:</strong> {{ idPrestamoSeleccionado }}</div>
+                        <div><strong>Cliente:</strong> {{ pagoSeleccionado.nombreCliente }}</div>
+                        <div><strong>Número de Cuenta:</strong> {{ pagoSeleccionado.numeroCuentaPrestamo }}</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold mb-3">Historial de Pagos ({{ pagosDelPrestamo.length }} pagos realizados)</h3>
+                    <p-table [value]="pagosDelPrestamo" [tableStyle]="{ 'min-width': '50rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Cuota</th>
+                                <th>Fecha de Pago</th>
+                                <th>Monto Pagado</th>
+                                <th>Capital</th>
+                                <th>Interés</th>
+                                <th>Mora</th>
+                                <th>Método de Pago</th>
+                                <th>Referencia</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-pago>
+                            <tr>
+                                <td><strong>#{{ pago.numeroCuotaPagada }}</strong></td>
+                                <td>{{ formatDate(pago.fechaPago) }}</td>
+                                <td class="font-bold">{{ formatCurrency(pago.montoPagado) }}</td>
+                                <td>{{ formatCurrency(pago.capitalPagado) }}</td>
+                                <td>{{ formatCurrency(pago.interesPagado) }}</td>
+                                <td>
+                                    <span *ngIf="pago.mora && pago.mora > 0" class="text-red-600">
+                                        {{ formatCurrency(pago.mora) }}
+                                    </span>
+                                    <span *ngIf="!pago.mora || pago.mora === 0">-</span>
+                                </td>
+                                <td>{{ getMetodoPagoLabel(pago.metodoPago) }}</td>
+                                <td>{{ pago.referencia || '-' }}</td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr>
+                                <td colspan="8" class="text-center p-4">
+                                    No hay pagos registrados para este préstamo
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <!-- Resumen de pagos -->
+                <div *ngIf="pagosDelPrestamo.length > 0" class="p-4 bg-gray-50 rounded">
+                    <h3 class="font-bold mb-3">Resumen de Pagos</h3>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-600">Total Pagado</div>
+                            <div class="text-xl font-bold text-green-600">
+                                {{ formatCurrency(calcularTotalMontoPagado()) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600">Total Capital</div>
+                            <div class="text-lg font-semibold">
+                                {{ formatCurrency(calcularTotalCapital()) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600">Total Interés</div>
+                            <div class="text-lg font-semibold">
+                                {{ formatCurrency(calcularTotalInteres()) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600">Total Mora</div>
+                            <div class="text-lg font-semibold text-red-600">
+                                {{ formatCurrency(calcularTotalMora()) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cerrar" icon="pi pi-times" (click)="detallesDialog = false" />
+        </ng-template>
+    </p-dialog>
+</div>

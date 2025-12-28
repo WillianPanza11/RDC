@@ -199,6 +199,12 @@ export class Clientes implements OnInit {
       return;
     }
 
+    //validar telefono
+    if(!this.validationService.validarTelefono(this.cliente.telefono, 10, 10)){
+      this.enviarMensajeAdvertencia('El teléfono no es válido');
+      return;
+    }
+
 
     //Validar campos requeridos
     const camposVacios = this.ValidarCamposRequeridos();

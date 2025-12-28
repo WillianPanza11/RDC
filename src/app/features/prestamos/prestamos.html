@@ -1,2 +1,397 @@
 <!-- header-->
 <app-header></app-header>
+<div class="card">
+    <p-toast />
+    <p-toolbar class="mb-6">
+        <ng-template #start>
+            <p-button label="Nuevo Préstamo" icon="pi pi-plus" class="mr-2" (onClick)="openNew()" />
+            <p-button label="Calcular Cuota" icon="pi pi-calculator" severity="info" class="mr-2" (onClick)="openCalcularCuota()" />
+        </ng-template>
+
+        <ng-template #end>
+            <p-button label="Exportar" icon="pi pi-upload" severity="secondary" (onClick)="exportCSV()" />
+        </ng-template>
+    </p-toolbar>
+
+    <!-- Filtro por estado -->
+    <div class="mb-4">
+        <label for="estado" class="block font-bold mb-2">Filtrar por Estado:</label>
+        <p-select [options]="estados" [(ngModel)]="selectedEstado" optionLabel="label" optionValue="value" 
+            placeholder="Seleccione un estado" class="w-full md:w-20rem" (ngModelChange)="onEstadoChange()" />
+    </div>
+
+    <p-table #dt [value]="prestamos" [rows]="10" [columns]="cols" [paginator]="true"
+        [globalFilterFields]="['numeroCuentaPrestamo', 'nombreCliente', 'montoSolicitado', 'estado']"
+        [tableStyle]="{ 'min-width': '75rem' }" [(selection)]="selectedPrestamos" [rowHover]="true" dataKey="idPrestamo"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} préstamos"
+        [showCurrentPageReport]="true">
+        <ng-template #caption>
+            <div class="flex items-center justify-between">
+                <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600;">Gestión de Préstamos</h1>
+                <p-iconfield>
+                    <p-inputicon class="pi pi-search" />
+                    <input pInputText type="text" (input)="dt.filterGlobal($event.target.value, 'contains')"
+                        placeholder="Buscar..." />
+                </p-iconfield>
+            </div>
+        </ng-template>
+        <ng-template #header>
+            <tr>
+                <th pSortableColumn="numeroCuentaPrestamo" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Número de Cuenta
+                        <p-sortIcon field="numeroCuentaPrestamo" />
+                    </div>
+                </th>
+                <th pSortableColumn="nombreCliente" style="min-width:16rem">
+                    <div class="flex items-center gap-2">
+                        Cliente
+                        <p-sortIcon field="nombreCliente" />
+                    </div>
+                </th>
+                <th pSortableColumn="montoSolicitado" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Monto Solicitado
+                        <p-sortIcon field="montoSolicitado" />
+                    </div>
+                </th>
+                <th pSortableColumn="montoAprobado" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Monto Aprobado
+                        <p-sortIcon field="montoAprobado" />
+                    </div>
+                </th>
+                <th pSortableColumn="plazoMeses" style="min-width:10rem">
+                    <div class="flex items-center gap-2">
+                        Plazo (Meses)
+                        <p-sortIcon field="plazoMeses" />
+                    </div>
+                </th>
+                <th pSortableColumn="cuotaMensual" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Cuota Mensual
+                        <p-sortIcon field="cuotaMensual" />
+                    </div>
+                </th>
+                <th pSortableColumn="saldoPendiente" style="min-width:12rem">
+                    <div class="flex items-center gap-2">
+                        Saldo Pendiente
+                        <p-sortIcon field="saldoPendiente" />
+                    </div>
+                </th>
+                <th pSortableColumn="estado" style="min-width: 10rem">
+                    <div class="flex items-center gap-2">
+                        Estado
+                        <p-sortIcon field="estado" />
+                    </div>
+                </th>
+                <th pSortableColumn="fechaSolicitud" style="min-width: 12rem">
+                    <div class="flex items-center gap-2">
+                        Fecha Solicitud
+                        <p-sortIcon field="fechaSolicitud" />
+                    </div>
+                </th>
+                <th style="min-width: 15rem"></th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-prestamo>
+            <tr>
+                <td>{{ prestamo.numeroCuentaPrestamo || 'N/A' }}</td>
+                <td>{{ prestamo.nombreCliente }}</td>
+                <td>{{ formatCurrency(prestamo.montoSolicitado) }}</td>
+                <td>{{ formatCurrency(prestamo.montoAprobado) }}</td>
+                <td>
+                    <div *ngIf="!editingPlazo[prestamo.idPrestamo!]" 
+                         (click)="iniciarEdicionPlazo(prestamo)" 
+                         class="cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
+                         style="min-width: 60px; display: inline-block;"
+                         pTooltip="Haga clic para editar">
+                        {{ prestamo.plazoMeses }}
+                        <i class="pi pi-pencil ml-2 text-sm text-gray-500"></i>
+                    </div>
+                    <div *ngIf="editingPlazo[prestamo.idPrestamo!]" class="flex items-center gap-2">
+                        <input type="number" 
+                               pInputText 
+                               [(ngModel)]="plazoEditado[prestamo.idPrestamo!]"
+                               (keydown)="guardarPlazo(prestamo, $event)"
+                               (blur)="guardarPlazo(prestamo, $event)"
+                               [min]="1" 
+                               [max]="120"
+                               class="w-24"
+                               style="text-align: center;"
+                               autofocus />
+                        <i class="pi pi-check text-green-500 cursor-pointer hover:text-green-700" 
+                           (click)="guardarPlazo(prestamo)"
+                           (mousedown)="$event.preventDefault()"
+                           pTooltip="Guardar (Enter)"></i>
+                        <i class="pi pi-times text-red-500 cursor-pointer hover:text-red-700" 
+                           (click)="cancelarEdicionPlazo(prestamo)"
+                           (mousedown)="$event.preventDefault()"
+                           pTooltip="Cancelar (Esc)"></i>
+                    </div>
+                </td>
+                <td>{{ formatCurrency(prestamo.cuotaMensual) }}</td>
+                <td>{{ formatCurrency(prestamo.saldoPendiente) }}</td>
+                <td>
+                    <p-tag [value]="prestamo.estado" [severity]="getSeverity(prestamo.estado)" />
+                </td>
+                <td>{{ formatDate(prestamo.fechaSolicitud) }}</td>
+                <td>
+                    <p-button icon="pi pi-table" class="mr-2" [rounded]="true" [outlined]="true" 
+                        (click)="verAmortizacion(prestamo)" [disabled]="prestamo.estado !== 'APROBADO' && prestamo.estado !== 'DESEMBOLSADO'" 
+                        pTooltip="Ver tabla de amortización" />
+                    <p-button icon="pi pi-money-bill" class="mr-2" [rounded]="true" [outlined]="true" severity="info"
+                        (click)="openPago(prestamo)" [disabled]="prestamo.estado !== 'APROBADO' && prestamo.estado !== 'DESEMBOLSADO'"
+                        pTooltip="Registrar pago" />
+                    <p-button icon="pi pi-check" class="mr-2" [rounded]="true" [outlined]="true" severity="success"
+                        (click)="openAprobar(prestamo)" [disabled]="prestamo.estado !== 'SOLICITADO'"
+                        pTooltip="Aprobar préstamo" />
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <!-- Dialog para nuevo préstamo -->
+    <p-dialog [(visible)]="prestamoDialog" [style]="{ width: '550px' }" header="Solicitar Préstamo" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label for="cliente" class="block font-bold mb-3">Cliente *</label>
+                        <p-select [options]="clientesOptions" [(ngModel)]="prestamo.idCliente" optionLabel="label" 
+                            optionValue="value" placeholder="Seleccione un cliente" class="w-full" 
+                            [filter]="true" filterPlaceholder="Buscar por nombre o cédula..." 
+                            [showClear]="true" [virtualScroll]="clientesOptions.length > 50"
+                            [virtualScrollItemSize]="38" />
+                        <small class="text-red-500" *ngIf="submitted && !prestamo.idCliente">El cliente es requerido.</small>
+                    </div>
+                </div>
+
+                
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="grid grid-cols-12 gap-4">
+                        <br>
+                        <div class="col-span-12">
+                            <label for="tipoPrestamo" class="block font-bold mb-3">Tipo de Préstamo</label>
+                            <p-select [options]="[
+                                { label: 'Personal', value: 'PERSONAL' }
+                            ]" [(ngModel)]="prestamo.tipoPrestamo" optionLabel="label" optionValue="value" 
+                                placeholder="Seleccione el tipo" class="w-full" />
+                        </div>
+                    </div>
+                    <br>
+                    <div class="col-span-6">
+                        <label for="montoSolicitado" class="block font-bold mb-3">Monto Solicitado *</label>
+                        <p-inputnumber [(ngModel)]="prestamo.montoSolicitado" mode="currency" currency="USD" locale="es-EC" 
+                            [min]="1" [max]="1000000" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && (!prestamo.montoSolicitado || prestamo.montoSolicitado <= 0)">
+                            El monto solicitado es requerido y debe ser mayor a 0.</small>
+                    </div>
+                    <br>
+                    <div class="col-span-6">
+                        <label for="plazoMeses" class="block font-bold mb-3">Plazo (Meses) *</label>
+                        <p-inputnumber [(ngModel)]="prestamo.plazoMeses" [min]="1" [max]="120" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && (!prestamo.plazoMeses || prestamo.plazoMeses <= 0)">
+                            El plazo en meses es requerido y debe ser mayor a 0.</small>
+                    </div>
+                </div>
+
+                
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+            <p-button label="Guardar" icon="pi pi-check" (click)="savePrestamo()" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog para aprobar préstamo -->
+    <p-dialog [(visible)]="aprobarDialog" [style]="{ width: '450px' }" header="Aprobar Préstamo" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <div>
+                    <label for="montoAprobado" class="block font-bold mb-3">Monto Aprobado *</label>
+                    <p-inputnumber [(ngModel)]="montoAprobado" mode="currency" currency="USD" locale="es-EC" 
+                        [min]="1" [max]="1000000" class="w-full" />
+                    <small class="text-red-500" *ngIf="submitted && (!montoAprobado || montoAprobado <= 0)">
+                        El monto aprobado es requerido y debe ser mayor a 0.</small>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+            <p-button label="Aprobar" icon="pi pi-check" severity="success" (click)="aprobarPrestamo()" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog para calcular cuota -->
+    <p-dialog [(visible)]="calcularCuotaDialog" [style]="{ width: '500px' }" header="Calcular Cuota Mensual" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-6">
+                        <label for="monto" class="block font-bold mb-3">Monto *</label>
+                        <p-inputnumber [(ngModel)]="calcularCuota.monto" mode="currency" currency="USD" locale="es-EC" 
+                            [min]="1" [max]="1000000" class="w-full" />
+                    </div>
+                    <div class="col-span-6">
+                        <label for="plazoMeses" class="block font-bold mb-3">Plazo (Meses) *</label>
+                        <p-inputnumber [(ngModel)]="calcularCuota.plazoMeses" [min]="1" [max]="120" class="w-full" />
+                    </div>
+                </div>
+
+                <p-button label="Calcular" icon="pi pi-calculator" (click)="calcularCuotaMensual()" class="w-full" />
+
+                <div *ngIf="resultadoCuota" class="p-4 bg-gray-100 rounded">
+                    <h3 class="font-bold mb-3">Resultado del Cálculo:</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><strong>Cuota Mensual:</strong></div>
+                        <div>{{ formatCurrency(resultadoCuota.cuotaMensual) }}</div>
+                        <div><strong>Total a Pagar:</strong></div>
+                        <div>{{ formatCurrency(resultadoCuota.totalAPagar) }}</div>
+                        <div><strong>Total Intereses:</strong></div>
+                        <div>{{ formatCurrency(resultadoCuota.totalIntereses) }}</div>
+                        <div><strong>Tasa Interés Mensual:</strong></div>
+                        <div>{{ resultadoCuota.tasaInteresMensual }}%</div>
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cerrar" icon="pi pi-times" (click)="hideDialog()" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog para tabla de amortización -->
+    <p-dialog [(visible)]="amortizacionDialog" [style]="{ width: '900px' }" header="Tabla de Amortización" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <p-table [value]="tablaAmortizacion" [tableStyle]="{ 'min-width': '50rem' }">
+                    <ng-template #header>
+                        <tr>
+                            <th>Cuota</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Monto Cuota</th>
+                            <th>Capital</th>
+                            <th>Interés</th>
+                            <th>Saldo Restante</th>
+                            <th>Estado</th>
+                            <th>Fecha Pago</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template #body let-amortizacion>
+                        <tr>
+                            <td>{{ amortizacion.numeroCuota }}</td>
+                            <td>{{ formatDate(amortizacion.fechaVencimiento) }}</td>
+                            <td>{{ formatCurrency(amortizacion.montoCuota) }}</td>
+                            <td>{{ formatCurrency(amortizacion.capital) }}</td>
+                            <td>{{ formatCurrency(amortizacion.interes) }}</td>
+                            <td>{{ formatCurrency(amortizacion.saldoRestante) }}</td>
+                            <td>
+                                <p-tag [value]="amortizacion.estadoPago" 
+                                    [severity]="amortizacion.estadoPago === 'PAGADO' ? 'success' : 'warn'" />
+                            </td>
+                            <td>{{ formatDate(amortizacion.fechaPago) }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cerrar" icon="pi pi-times" (click)="hideDialog()" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Dialog para registrar pago -->
+    <p-dialog [(visible)]="pagoDialog" [style]="{ width: '600px' }" header="Registrar Pago de Préstamo" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-6">
+                <div *ngIf="prestamoSeleccionadoParaPago" class="p-4 bg-blue-50 rounded mb-4">
+                    <h3 class="font-bold mb-2">Información del Préstamo</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>Cliente:</strong> {{ prestamoSeleccionadoParaPago.nombreCliente }}</div>
+                        <div><strong>Monto Aprobado:</strong> {{ formatCurrency(prestamoSeleccionadoParaPago.montoAprobado) }}</div>
+                        <div><strong>Saldo Pendiente:</strong> {{ formatCurrency(prestamoSeleccionadoParaPago.saldoPendiente) }}</div>
+                        <div><strong>Cuota Mensual:</strong> {{ formatCurrency(prestamoSeleccionadoParaPago.cuotaMensual) }}</div>
+                    </div>
+                </div>
+
+                <br>
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label for="numeroCuota" class="block font-bold mb-3">Cuota a Pagar *</label>
+                        <p-select [options]="cuotasDisponibles" [(ngModel)]="pago.numeroCuota" optionLabel="label" 
+                            optionValue="value" placeholder="Seleccione una cuota" class="w-full" 
+                            (ngModelChange)="onCuotaSeleccionada()" />
+                        <small class="text-red-500" *ngIf="submitted && !pago.numeroCuota">La cuota es requerida.</small>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <br>
+                    <div class="col-span-6">
+                        <label for="montoPagado" class="block font-bold mb-3">Monto Pagado *</label>
+                        <p-inputnumber [(ngModel)]="pago.montoPagado" mode="currency" currency="USD" locale="es-EC" 
+                            [min]="0.01" [max]="1000000" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && (!pago.montoPagado || pago.montoPagado <= 0)">
+                            El monto pagado es requerido y debe ser mayor a 0.</small>
+                    </div>
+                    <br>
+                    <div class="col-span-6">
+                        <label for="mora" class="block font-bold mb-3">Mora (Opcional)</label>
+                        <p-inputnumber [(ngModel)]="pago.mora" mode="currency" currency="USD" locale="es-EC" 
+                            [min]="0" [max]="10000" class="w-full" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <br>
+                    <div class="col-span-6">
+                        <label for="metodoPago" class="block font-bold mb-3">Método de Pago *</label>
+                        <p-select [options]="[
+                            { label: 'Efectivo', value: 'EFECTIVO' },
+                            { label: 'Transferencia', value: 'TRANSFERENCIA' },
+                            { label: 'Tarjeta de Débito', value: 'TARJETA_DEBITO' },
+                            { label: 'Tarjeta de Crédito', value: 'TARJETA_CREDITO' },
+                        ]" [(ngModel)]="pago.metodoPago" optionLabel="label" optionValue="value" 
+                            placeholder="Seleccione el método" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && !pago.metodoPago">El método de pago es requerido.</small>
+                    </div>
+                    <br>
+                    <div class="col-span-6">
+                        <label for="referencia" class="block font-bold mb-3">Referencia (Opcional)</label>
+                        <input type="text" pInputText id="referencia" [(ngModel)]="pago.referencia" 
+                            placeholder="Número de referencia, cheque, etc." class="w-full" />
+                    </div>
+                </div>
+
+                <br>
+                <div *ngIf="pago.montoPagado" class="p-3 bg-gray-100 rounded">
+                    <div class="flex justify-between">
+                        <span><strong>Monto Cuota:</strong></span>
+                        <span>{{ formatCurrency(pago.montoPagado) }}</span>
+                    </div>
+                    <div *ngIf="pago.mora && pago.mora > 0" class="flex justify-between">
+                        <span><strong>Mora:</strong></span>
+                        <span>{{ formatCurrency(pago.mora) }}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
+                        <span><strong>Total a Pagar:</strong></span>
+                        <span>{{ formatCurrency((pago.montoPagado || 0) + (pago.mora || 0)) }}</span>
+                    </div>
+                </div>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+            <p-button label="Registrar Pago" icon="pi pi-check" severity="success" (click)="registrarPago()" />
+        </ng-template>
+    </p-dialog>
+
+    <p-confirmDialog [style]="{ width: '450px' }" />
+</div>
