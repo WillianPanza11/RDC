@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -17,6 +17,11 @@ export class LoginComponent {
   errorMessage = signal<string | null>(null);
   showPassword = signal(false);
 
+  // Patrón de caracteres permitidos en el usuario
+  private readonly USERNAME_PATTERN = /^[a-zA-Z0-9._\-@]+$/;
+  // Secuencias sospechosas bloqueadas en la contraseña (XSS, SQL injection)
+  private readonly SUSPICIOUS_PASSWORD = /(<|>|--|\/\*|\*\/|xp_|script)/i;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -24,9 +29,45 @@ export class LoginComponent {
     private route: ActivatedRoute
   ) {
     this.loginForm = this.fb.group({
-      username: ['', [Validators.required]],
-      password: ['', [Validators.required, Validators.minLength(4)]]
+      username: ['', [
+        Validators.required,
+        Validators.maxLength(50),
+        this.usernameValidator()
+      ]],
+      password: ['', [
+        Validators.required,
+        Validators.minLength(4),
+        Validators.maxLength(100),
+        this.passwordSecurityValidator()
+      ]]
     });
+  }
+
+  private usernameValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+      return this.USERNAME_PATTERN.test(value) ? null : { caracteresInvalidos: true };
+    };
+  }
+
+  private passwordSecurityValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+      return this.SUSPICIOUS_PASSWORD.test(value) ? { caracteresInvalidos: true } : null;
+    };
+  }
+
+  // Bloquea en tiempo real caracteres no permitidos en el campo usuario
+  filtrarUsuario(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const limpio = input.value.replace(/[^a-zA-Z0-9._\-@]/g, '');
+    if (limpio !== input.value) {
+      input.value = limpio;
+      this.loginForm.get('username')?.setValue(limpio, { emitEvent: false });
+      this.loginForm.get('username')?.updateValueAndValidity();
+    }
   }
 
   onSubmit(): void {
@@ -39,16 +80,12 @@ export class LoginComponent {
     this.errorMessage.set(null);
 
     this.authService.login(this.loginForm.value).subscribe({
-      next: (response) => {
-        
-        // Obtener la URL de retorno o redirigir al dashboard
+      next: () => {
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
         this.router.navigate([returnUrl]);
       },
       error: (error) => {
         this.isLoading.set(false);
-        
-        // Manejar diferentes tipos de errores
         if (error.status === 401) {
           this.errorMessage.set('Usuario o contraseña incorrectos');
         } else if (error.status === 0) {

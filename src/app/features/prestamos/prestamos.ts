@@ -22,6 +22,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { PrstamosService } from '../../generated-api/api/prstamos.service';
 import { PagosDePrstamosService } from '../../generated-api/api/pagosDePrstamos.service';
 import { ClienteControllerService } from '../../generated-api/api/clienteController.service';
+import { CuentasDeAhorroService } from '../../generated-api/api/cuentasDeAhorro.service';
 import { PrestamoRequestDTO } from '../../generated-api/model/prestamoRequestDTO';
 import { PrestamoResponseDTO } from '../../generated-api/model/prestamoResponseDTO';
 import { CalcularCuotaRequestDTO } from '../../generated-api/model/calcularCuotaRequestDTO';
@@ -44,7 +45,7 @@ interface Column {
   imports: [Toast, ToolbarModule, TableModule, ButtonModule, DialogModule, IconFieldModule,
     SelectModule, InputIconModule, Tag, ConfirmDialog, FormsModule,
     CommonModule, MessageModule, ConfirmDialogModule, Header, InputTextModule, InputNumberModule, TooltipModule],
-  providers: [MessageService, ConfirmationService, PrstamosService, PagosDePrstamosService, ClienteControllerService],
+  providers: [MessageService, ConfirmationService, PrstamosService, PagosDePrstamosService, ClienteControllerService, CuentasDeAhorroService],
   templateUrl: './prestamos.html',
   styleUrl: './prestamos.css',
 })
@@ -63,6 +64,8 @@ export class Prestamos implements OnInit {
 
   // Para aprobar préstamo
   montoAprobado: number = 0;
+  idCuentaAhorroSeleccionada: number = 0;
+  cuentasClienteOptions: any[] = [];
 
   // Para calcular cuota
   calcularCuota: CalcularCuotaRequestDTO = { monto: 0, plazoMeses: 0 };
@@ -97,6 +100,7 @@ export class Prestamos implements OnInit {
     private prestamoService: PrstamosService,
     private pagosService: PagosDePrstamosService,
     private clienteService: ClienteControllerService,
+    private cuentasService: CuentasDeAhorroService,
     private validationService: ValidationService
   ) {
     afterNextRender(() => {
@@ -141,7 +145,6 @@ export class Prestamos implements OnInit {
       this.prestamoService.obtenerTodosLosPrestamos().subscribe({
         next: (data) => {
           this.prestamos = data;
-          console.log('todos los prestamos', this.prestamos);
         },
         error: (error) => {
           this.enviarMensajeError('No se pudieron cargar los préstamos');
@@ -214,12 +217,31 @@ export class Prestamos implements OnInit {
   }
 
   openAprobar(prestamo: PrestamoResponseDTO): void {
-    if (!prestamo.idPrestamo) {
+    if (!prestamo.idPrestamo || !prestamo.idCliente) {
       return;
     }
     this.prestamoId = prestamo.idPrestamo;
     this.montoAprobado = prestamo.montoSolicitado || 0;
-    this.aprobarDialog = true;
+    this.idCuentaAhorroSeleccionada = 0;
+    this.cuentasClienteOptions = [];
+    this.submitted = false;
+
+    this.cuentasService.obtenerCuentasPorCliente(prestamo.idCliente).subscribe({
+      next: (cuentas) => {
+        const activas = cuentas.filter(c => c.estado === 'ACTIVA');
+        this.cuentasClienteOptions = activas.map(c => ({
+          label: `${c.numeroCuenta} — ${c.tipoCuenta} — Saldo: ${this.formatCurrency(c.saldoActual)}`,
+          value: c.idCuenta
+        }));
+        if (this.cuentasClienteOptions.length === 0) {
+          this.enviarMensajeAdvertencia('El cliente no tiene cuentas de ahorro activas para recibir el desembolso');
+        }
+        this.aprobarDialog = true;
+      },
+      error: () => {
+        this.enviarMensajeError('No se pudieron cargar las cuentas del cliente');
+      }
+    });
   }
 
   verAmortizacion(prestamo: PrestamoResponseDTO): void {
@@ -396,6 +418,8 @@ export class Prestamos implements OnInit {
   }
 
   aprobarPrestamo(): void {
+    this.submitted = true;
+
     if (!this.prestamoId) {
       return;
     }
@@ -405,9 +429,15 @@ export class Prestamos implements OnInit {
       return;
     }
 
+    if (!this.idCuentaAhorroSeleccionada) {
+      this.enviarMensajeAdvertencia('Debe seleccionar la cuenta de ahorro para el desembolso');
+      return;
+    }
+
     const aprobarDTO: AprobarPrestamoDTO = {
       idPrestamo: this.prestamoId,
-      montoAprobado: this.montoAprobado
+      montoAprobado: this.montoAprobado,
+      idCuentaAhorro: this.idCuentaAhorroSeleccionada
     };
 
     this.prestamoService.aprobarPrestamo(aprobarDTO).subscribe({
@@ -416,12 +446,12 @@ export class Prestamos implements OnInit {
         if (index !== -1) {
           this.prestamos[index] = response;
         }
-        this.enviarMensajeExito('Préstamo aprobado correctamente');
+        this.enviarMensajeExito('Préstamo aprobado y desembolso realizado correctamente');
         this.aprobarDialog = false;
         this.loadPrestamos();
       },
       error: (error) => {
-        this.enviarMensajeError('No se pudo aprobar el préstamo');
+        this.enviarMensajeError(error.error?.message || 'No se pudo aprobar el préstamo');
         console.error('Error approving prestamo:', error);
       }
     });

@@ -13,4 +13,5 @@
 export interface AprobarPrestamoDTO { 
     idPrestamo: number;
     montoAprobado: number;
+    idCuentaAhorro: number;
 }

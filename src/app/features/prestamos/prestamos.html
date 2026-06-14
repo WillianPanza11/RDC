@@ -162,6 +162,7 @@
                             optionValue="value" placeholder="Seleccione un cliente" class="w-full" 
                             [filter]="true" filterPlaceholder="Buscar por nombre o cédula..." 
                             [showClear]="true" [virtualScroll]="clientesOptions.length > 50"
+                            appendTo="body"
                             [virtualScrollItemSize]="38" />
                         <small class="text-red-500" *ngIf="submitted && !prestamo.idCliente">El cliente es requerido.</small>
                     </div>
@@ -207,22 +208,36 @@
     </p-dialog>
 
     <!-- Dialog para aprobar préstamo -->
-    <p-dialog [(visible)]="aprobarDialog" [style]="{ width: '450px' }" header="Aprobar Préstamo" [modal]="true">
+    <p-dialog [(visible)]="aprobarDialog" [style]="{ width: '500px' }" header="Aprobar Préstamo y Desembolso" [modal]="true">
         <ng-template #content>
             <div class="flex flex-col gap-6">
                 <div>
                     <label for="montoAprobado" class="block font-bold mb-3">Monto Aprobado *</label>
-                    <p-inputnumber [(ngModel)]="montoAprobado" mode="currency" currency="USD" locale="es-EC" 
+                    <p-inputnumber [(ngModel)]="montoAprobado" mode="currency" currency="USD" locale="es-EC"
                         [min]="1" [max]="1000000" class="w-full" />
                     <small class="text-red-500" *ngIf="submitted && (!montoAprobado || montoAprobado <= 0)">
                         El monto aprobado es requerido y debe ser mayor a 0.</small>
+                </div>
+                <div>
+                    <label for="cuentaDesembolso" class="block font-bold mb-3">Cuenta de Ahorro para Desembolso *</label>
+                    <p-select [options]="cuentasClienteOptions" [(ngModel)]="idCuentaAhorroSeleccionada"
+                        optionLabel="label" optionValue="value"
+                        placeholder="Seleccione la cuenta de destino"
+                        class="w-full"
+                        appendTo="body"
+                        [showClear]="true" />
+                    <small class="text-red-500" *ngIf="submitted && !idCuentaAhorroSeleccionada">
+                        Debe seleccionar una cuenta de ahorro para el desembolso.</small>
+                    <small class="text-orange-500" *ngIf="cuentasClienteOptions.length === 0">
+                        El cliente no tiene cuentas de ahorro activas.</small>
                 </div>
             </div>
         </ng-template>
 
         <ng-template #footer>
             <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
-            <p-button label="Aprobar" icon="pi pi-check" severity="success" (click)="aprobarPrestamo()" />
+            <p-button label="Aprobar y Desembolsar" icon="pi pi-check" severity="success"
+                (click)="aprobarPrestamo()" [disabled]="cuentasClienteOptions.length === 0" />
         </ng-template>
     </p-dialog>
 
@@ -358,7 +373,7 @@
                             { label: 'Tarjeta de Débito', value: 'TARJETA_DEBITO' },
                             { label: 'Tarjeta de Crédito', value: 'TARJETA_CREDITO' },
                         ]" [(ngModel)]="pago.metodoPago" optionLabel="label" optionValue="value" 
-                            placeholder="Seleccione el método" class="w-full" />
+                            appendTo="body" placeholder="Seleccione el método" class="w-full" />
                         <small class="text-red-500" *ngIf="submitted && !pago.metodoPago">El método de pago es requerido.</small>
                     </div>
                     <br>

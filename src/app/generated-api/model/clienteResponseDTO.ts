@@ -19,6 +19,7 @@ export interface ClienteResponseDTO {
     telefono?: string;
     direccion?: string;
     fechaNacimiento?: string;
+    ingresoMensual?: number;
     estado?: ClienteResponseDTO.EstadoEnum;
     fechaRegistro?: Date;
 }

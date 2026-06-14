@@ -18,4 +18,5 @@ export interface ClienteRequestDTO {
     telefono: string;
     direccion?: string;
     fechaNacimiento?: string;
+    ingresoMensual?: number;
 }

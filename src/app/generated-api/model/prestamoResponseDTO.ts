@@ -25,4 +25,5 @@ export interface PrestamoResponseDTO {
     fechaAprobacion?: string;
     fechaDesembolso?: string;
     numeroCuentaPrestamo?: string;
+    numeroCuentaAhorroDesembolso?: string;
 }
