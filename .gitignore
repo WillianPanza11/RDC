@@ -2,3 +2,29 @@ wwwroot/*.js
 node_modules
 typings
 dist
+
+# Dependencias
+node_modules/
+
+# Angular
+.angular/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Swagger Codegen (opcional)
+src/app/.swagger-codegen-ignore
+
+swagger-codegen-cli.jar
+src/app/swagger-codegen-cli.jar

@@ -6,6 +6,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { initializeAuth } from './core/initializers/auth.initializer';
 import { Configuration } from './generated-api/configuration';
+import { environment } from '../environments/environment';
 import { AutenticacinService } from './generated-api/api/autenticacin.service';
 import { ClienteControllerService } from './generated-api/api/clienteController.service';
 
@@ -30,7 +31,7 @@ export const appConfig: ApplicationConfig = {
     // Configuración de la API generada
     {
       provide: Configuration,
-      useValue: new Configuration({ basePath: 'http://localhost:8080' })
+      useValue: new Configuration({ basePath: environment.apiUrl })
     },
     AutenticacinService,
     ClienteControllerService,
