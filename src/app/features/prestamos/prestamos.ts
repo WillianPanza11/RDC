@@ -54,6 +54,7 @@ export class Prestamos implements OnInit {
   calcularCuotaDialog: boolean = false;
   amortizacionDialog: boolean = false;
   prestamos: PrestamoResponseDTO[] = [];
+  cargando: boolean = true;
   prestamoId?: number;
   selectedPrestamos: PrestamoResponseDTO[] = [];
   submitted: boolean = false;
@@ -129,12 +130,15 @@ export class Prestamos implements OnInit {
   }
 
   loadPrestamos(): void {
+    this.cargando = true;
     if (this.selectedEstado === 'TODOS') {
       this.prestamoService.obtenerTodosLosPrestamos().subscribe({
         next: (data) => {
           this.prestamos = this.ordenarPorRecientes(data);
+          this.cargando = false;
         },
         error: (error) => {
+          this.cargando = false;
           this.enviarMensajeError('No se pudieron cargar los préstamos');
           console.error('Error loading prestamos:', error);
         }
@@ -143,9 +147,10 @@ export class Prestamos implements OnInit {
       this.prestamoService.obtenerPrestamosPorEstado(this.selectedEstado).subscribe({
         next: (data) => {
           this.prestamos = this.ordenarPorRecientes(data);
-          console.log('prestamos por estado', this.prestamos);
+          this.cargando = false;
         },
         error: (error) => {
+          this.cargando = false;
           this.enviarMensajeError('No se pudieron cargar los préstamos');
           console.error('Error loading prestamos:', error);
         }

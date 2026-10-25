@@ -42,6 +42,7 @@ export class Pagos implements OnInit {
   @ViewChild(CorregirPagoDialog) corregirPagoDialog!: CorregirPagoDialog;
 
   pagos: PagoPrestamoResponseDTO[] = [];
+  cargando: boolean = true;
   pagoSeleccionado?: PagoPrestamoResponseDTO;
   detallesDialog: boolean = false;
   pagosDelPrestamo: PagoPrestamoResponseDTO[] = [];
@@ -88,12 +89,15 @@ export class Pagos implements OnInit {
   }
 
   loadPagos(): void {
+    this.cargando = true;
     if (this.clienteFiltro) {
       this.pagosService.obtenerPagosPorCliente(this.clienteFiltro).subscribe({
         next: (data) => {
           this.pagos = this.ordenarPorRecientes(data);
+          this.cargando = false;
         },
         error: (error) => {
+          this.cargando = false;
           this.enviarMensajeError('No se pudieron cargar los pagos');
           console.error('Error loading pagos:', error);
         }
@@ -102,8 +106,10 @@ export class Pagos implements OnInit {
       this.pagosService.obtenerTodosLosPagos().subscribe({
         next: (data) => {
           this.pagos = this.ordenarPorRecientes(data);
+          this.cargando = false;
         },
         error: (error) => {
+          this.cargando = false;
           this.enviarMensajeError('No se pudieron cargar los pagos');
           console.error('Error loading pagos:', error);
         }

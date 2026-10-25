@@ -20,7 +20,7 @@
             (ngModelChange)="onClienteFiltroChange()" [filter]="true" filterPlaceholder="Buscar por nombre o cédula..." />
     </div>
 
-    <p-table #dt [value]="pagos" [rows]="10" [columns]="cols" [paginator]="true"
+    <p-table #dt [value]="pagos" [rows]="10" [columns]="cols" [paginator]="true" [loading]="cargando"
         [globalFilterFields]="['nombreCliente', 'cedula', 'numeroCuentaPrestamo', 'numeroCuotaPagada', 'metodoPago', 'referencia']"
         [tableStyle]="{ 'min-width': '75rem' }" [rowHover]="true" dataKey="idPago"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pagos"

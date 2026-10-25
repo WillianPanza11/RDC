@@ -59,7 +59,6 @@ export class RegisterComponent {
 
     this.authService.register(registerData).subscribe({
       next: (response) => {
-        console.log('Registro exitoso:', response);
         this.successMessage.set('¡Registro exitoso! Redirigiendo al dashboard...');
         
         // Redirigir al dashboard después de 2 segundos

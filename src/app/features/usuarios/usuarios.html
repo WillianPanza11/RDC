@@ -3,7 +3,7 @@
 <div class="card">
     <p-toast />
 
-    <p-table #dt [value]="usuarios" [rows]="10" [paginator]="true"
+    <p-table #dt [value]="usuarios" [rows]="10" [paginator]="true" [loading]="cargando"
         [globalFilterFields]="['nombreCompleto', 'username', 'cedula']"
         [tableStyle]="{ 'min-width': '80rem' }" [rowHover]="true" dataKey="idUsuario"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} usuarios"

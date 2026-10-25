@@ -20,7 +20,7 @@
             placeholder="Seleccione un estado" class="w-full md:w-20rem" (ngModelChange)="onEstadoChange()" />
     </div>
 
-    <p-table #dt [value]="prestamos" [rows]="10" [columns]="cols" [paginator]="true"
+    <p-table #dt [value]="prestamos" [rows]="10" [columns]="cols" [paginator]="true" [loading]="cargando"
         [globalFilterFields]="['numeroCuentaPrestamo', 'nombreCliente', 'montoSolicitado', 'estado']"
         [tableStyle]="{ 'min-width': '75rem' }" [(selection)]="selectedPrestamos" [rowHover]="true" dataKey="idPrestamo"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} préstamos"

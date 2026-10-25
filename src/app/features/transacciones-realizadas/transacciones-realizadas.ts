@@ -40,6 +40,7 @@ export class TransaccionesRealizadas implements OnInit {
 
   transacciones: TransaccionAhorroResponseDTO[] = [];
   transaccionesFiltradas: TransaccionAhorroResponseDTO[] = [];
+  cargando: boolean = true;
   cuentas: CuentaAhorroResponseDTO[] = [];
 
   @ViewChild('dt') dt!: Table;
@@ -121,13 +122,15 @@ export class TransaccionesRealizadas implements OnInit {
   }
 
   loadTransacciones(): void {
+    this.cargando = true;
     this.transaccionService.obtenerTodasLasTransacciones().subscribe({
       next: (data) => {
         this.transacciones = data;
         this.transaccionesFiltradas = data;
-        console.log(this.transacciones);
+        this.cargando = false;
       },
       error: (error) => {
+        this.cargando = false;
         this.enviarMensajeError('No se pudieron cargar las transacciones');
         console.error('Error loading transacciones:', error);
       }
@@ -135,15 +138,17 @@ export class TransaccionesRealizadas implements OnInit {
   }
 
   loadTransaccionesPorCuenta(cuentaId: number): void {
+    this.cargando = true;
     this.transaccionService.obtenerTransaccionesPorCuenta(cuentaId).subscribe({
       next: (data) => {
         this.transacciones = data;
         this.transaccionesFiltradas = data;
         // Aplicar filtros automáticamente para mantener el filtro de cuenta
         this.aplicarFiltros();
-        console.log('Transacciones de la cuenta:', this.transacciones);
+        this.cargando = false;
       },
       error: (error) => {
+        this.cargando = false;
         this.enviarMensajeError('No se pudieron cargar las transacciones de la cuenta');
         console.error('Error loading transacciones por cuenta:', error);
       }

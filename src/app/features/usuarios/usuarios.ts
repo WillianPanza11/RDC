@@ -37,6 +37,7 @@ import { ResetearPasswordDialog } from './resetear-password-dialog/resetear-pass
 export class Usuarios {
 
   usuarios: UsuarioResponseSimpleDTO[] = [];
+  cargando: boolean = true;
 
   @ViewChild('dt') dt!: Table;
   @ViewChild(EditarUsuarioDialog) editarDialog!: EditarUsuarioDialog;
@@ -53,11 +54,14 @@ export class Usuarios {
   }
 
   loadUsuarios(): void {
+    this.cargando = true;
     this.usuariosService.listarUsuarios().subscribe({
       next: (data) => {
         this.usuarios = this.ordenarPorRecientes(data);
+        this.cargando = false;
       },
       error: (error) => {
+        this.cargando = false;
         this.enviarMensajeError('No se pudieron cargar los usuarios');
         console.error('Error loading usuarios:', error);
       }

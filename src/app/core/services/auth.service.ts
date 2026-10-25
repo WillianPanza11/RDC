@@ -52,8 +52,6 @@ export class AuthService {
       } catch (error) {
         this.clearStorage();
       }
-    } else {
-      console.log('[AuthService] No token or userData found in localStorage');
     }
   }
 

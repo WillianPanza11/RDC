@@ -1,4 +1,5 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
@@ -47,6 +48,7 @@ export class Clientes implements OnInit {
 
   clienteDialog: boolean = false;
   clientes: ClienteResponseDTO[] = [];
+  cargando: boolean = true;
   cliente: ClienteRequestDTO = this.getEmptyCliente();
   clienteId?: number;
   selectedClientes: ClienteResponseDTO[] = [];
@@ -84,6 +86,8 @@ export class Clientes implements OnInit {
   // contra la tabla de clientes (nada de una llamada por fila).
   clientesEnMora: Map<number, ClienteEnMoraDTO> = new Map();
 
+  private platformId = inject(PLATFORM_ID);
+
   constructor(
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
@@ -91,18 +95,22 @@ export class Clientes implements OnInit {
     private validationService: ValidationService,
     private router: Router,
     protected authService: AuthService
-  ) {
-    // Ejecutar loadClientes solo en el navegador (después de la hidratación SSR)
-    afterNextRender(() => {
-      this.loadClientes();
-      this.loadClientesEnMora();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initializeEstados();
     this.initializeColumns();
 
+    // Solo en el navegador (no durante el renderizado SSR). A diferencia de
+    // afterNextRender, esto corre DENTRO del zone de Angular, así que la
+    // tabla se repinta en cuanto llega la respuesta — con afterNextRender
+    // el dato llegaba igual (se veía en consola) pero Angular nunca se
+    // enteraba de que había que repintar, hasta que algo ajeno disparaba
+    // una detección de cambios por su cuenta.
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadClientes();
+      this.loadClientesEnMora();
+    }
   }
 
   private initializeEstados(): void {
@@ -145,12 +153,14 @@ export class Clientes implements OnInit {
   }
 
   loadClientes(): void {
+    this.cargando = true;
     this.clienteService.obtenerClientesPorEstado('ACTIVO').subscribe({
       next: (data) => {
         this.clientes = this.ordenarPorRecientes(data);
-        console.log(this.clientes);
+        this.cargando = false;
       },
       error: (error) => {
+        this.cargando = false;
         this.enviarMensajeError('No se pudieron cargar los clientes');
         console.error('Error loading clientes:', error);
       }

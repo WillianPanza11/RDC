@@ -44,6 +44,7 @@ export class Cuentas implements OnInit {
 
   cuentas: CuentaAhorroResponseDTO[] = [];
   selectedCuentas: CuentaAhorroResponseDTO[] = [];
+  cargando: boolean = true;
 
   @ViewChild('dt') dt!: Table;
   @ViewChild(CuentaFormDialog) cuentaFormDialog!: CuentaFormDialog;
@@ -105,12 +106,14 @@ export class Cuentas implements OnInit {
   }
 
   loadCuentas(): void {
+    this.cargando = true;
     this.cuentaService.obtenerTodasLasCuentas().subscribe({
       next: (data) => {
         this.cuentas = this.ordenarPorRecientes(data);
-        console.log(this.cuentas);
+        this.cargando = false;
       },
       error: (error) => {
+        this.cargando = false;
         this.enviarMensajeError('No se pudieron cargar las cuentas');
         console.error('Error loading cuentas:', error);
       }

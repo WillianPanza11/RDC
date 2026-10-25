@@ -11,7 +11,7 @@
             (click)="volverAlCliente()" />
     </div>
 
-    <p-table #dt [value]="transaccionesFiltradas" [rows]="10" [columns]="cols" [paginator]="true"
+    <p-table #dt [value]="transaccionesFiltradas" [rows]="10" [columns]="cols" [paginator]="true" [loading]="cargando"
         [globalFilterFields]="['descripcion', 'tipoTransaccion', 'metodoPago']" [tableStyle]="{ 'min-width': '75rem' }"
         [rowHover]="true" dataKey="idTransaccion"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} transacciones"

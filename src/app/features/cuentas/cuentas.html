@@ -14,7 +14,7 @@
         </ng-template>
     </p-toolbar>
 
-    <p-table #dt [value]="cuentas" [rows]="10" [columns]="cols" [paginator]="true"
+    <p-table #dt [value]="cuentas" [rows]="10" [columns]="cols" [paginator]="true" [loading]="cargando"
         [globalFilterFields]="['numeroCuenta', 'nombreCliente', 'tipoCuenta', 'estado']"
         [tableStyle]="{ 'min-width': '75rem' }" [(selection)]="selectedCuentas" [rowHover]="true" dataKey="idCuenta"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas"
