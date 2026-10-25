@@ -1,0 +1,83 @@
+<!-- header-->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+
+    <h1 class="m-0 mb-6" style="font-size: 1.5rem; font-weight: 600;">Historial de Cierres</h1>
+
+    <div class="grid grid-cols-12 gap-4 mb-6">
+        <div class="col-span-3">
+            <label for="desde" class="block font-bold mb-2">Desde:</label>
+            <p-datepicker id="desde" [(ngModel)]="desde" dateFormat="dd/mm/yy" [showIcon]="true"
+                (ngModelChange)="onFiltroChange()" class="w-full" />
+        </div>
+        <div class="col-span-3">
+            <label for="hasta" class="block font-bold mb-2">Hasta:</label>
+            <p-datepicker id="hasta" [(ngModel)]="hasta" dateFormat="dd/mm/yy" [showIcon]="true"
+                (ngModelChange)="onFiltroChange()" class="w-full" />
+        </div>
+        <div class="col-span-4">
+            <label for="cajero" class="block font-bold mb-2">Cajero:</label>
+            <p-select id="cajero" [options]="cajerosOptions" [(ngModel)]="cajeroFiltro" optionLabel="label"
+                optionValue="value" placeholder="Todos los cajeros" class="w-full" [filter]="true"
+                (ngModelChange)="onFiltroChange()" />
+        </div>
+        <div class="col-span-2">
+            <label for="estado" class="block font-bold mb-2">Estado:</label>
+            <p-select id="estado" [options]="estadoOptions" [(ngModel)]="estadoFiltro" optionLabel="label"
+                optionValue="value" placeholder="Todas" class="w-full" (ngModelChange)="onFiltroChange()" />
+        </div>
+    </div>
+
+    <p-table #dt [value]="cierres" [rows]="rows" [totalRecords]="totalRecords" [lazy]="true"
+        (onLazyLoad)="onLazyLoad($event)" [loading]="cargando" [paginator]="true"
+        [tableStyle]="{ 'min-width': '70rem' }" dataKey="idCierre"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cierres"
+        [showCurrentPageReport]="true">
+        <ng-template #header>
+            <tr>
+                <th>Cajero</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total Cobrado</th>
+                <th>Efectivo Contado</th>
+                <th>Diferencia</th>
+                <th>Autorizado Por</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+            </tr>
+        </ng-template>
+        <ng-template #body let-cierre>
+            <tr>
+                <td>{{ cierre.nombreCajero || 'Cajero no registrado' }}</td>
+                <td>{{ cierre.fecha }}</td>
+                <td><p-tag [value]="cierre.estado" [severity]="getSeverity(cierre.estado)" /></td>
+                <td>{{ formatCurrency(cierre.totalCobrado) }}</td>
+                <td>{{ formatCurrency(cierre.efectivoContado) }}</td>
+                <td>
+                    <span *ngIf="cierre.diferencia !== undefined && cierre.diferencia !== null"
+                        [class.text-red-600]="cierre.diferencia !== 0">
+                        {{ formatCurrency(cierre.diferencia) }}
+                    </span>
+                    <span *ngIf="cierre.diferencia === undefined || cierre.diferencia === null">-</span>
+                </td>
+                <td>{{ cierre.nombreAutorizador || '-' }}</td>
+                <td>{{ cierre.observaciones || '-' }}</td>
+                <td>
+                    <p-button
+                        *ngIf="cierre.estado === 'ABIERTO' && authService.hasAnyRole(['ROLE_PRESIDENTE','ROLE_SECRETARIO','ROLE_ADMIN'])"
+                        label="Cerrar esta caja" icon="pi pi-lock" size="small" severity="danger"
+                        (click)="cerrarCajaSeleccionada(cierre)" />
+                </td>
+            </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+            <tr>
+                <td colspan="9" class="text-center p-4">No hay cierres en el rango seleccionado</td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <app-cerrar-caja-dialog (cerrado)="onCajaCerrada()" />
+    <p-confirmDialog [style]="{ width: '450px' }" />
+</div>

@@ -1,4 +1,7 @@
 import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Router } from '@angular/router';
+import { PrestamoFormDialog } from './prestamo-form-dialog/prestamo-form-dialog';
+import { PagoFormDialog } from './pago-form-dialog/pago-form-dialog';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
 import { ToolbarModule } from 'primeng/toolbar';
@@ -21,18 +24,13 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TooltipModule } from 'primeng/tooltip';
 import { PrstamosService } from '../../generated-api/api/prstamos.service';
 import { PagosDePrstamosService } from '../../generated-api/api/pagosDePrstamos.service';
-import { ClienteControllerService } from '../../generated-api/api/clienteController.service';
 import { CuentasDeAhorroService } from '../../generated-api/api/cuentasDeAhorro.service';
-import { PrestamoRequestDTO } from '../../generated-api/model/prestamoRequestDTO';
 import { PrestamoResponseDTO } from '../../generated-api/model/prestamoResponseDTO';
 import { CalcularCuotaRequestDTO } from '../../generated-api/model/calcularCuotaRequestDTO';
 import { CalcularCuotaResponseDTO } from '../../generated-api/model/calcularCuotaResponseDTO';
 import { AprobarPrestamoDTO } from '../../generated-api/model/aprobarPrestamoDTO';
 import { ActualizarPlazoPrestamoDTO } from '../../generated-api/model/actualizarPlazoPrestamoDTO';
-import { PagoPrestamoRequestDTO } from '../../generated-api/model/pagoPrestamoRequestDTO';
-import { PagoPrestamoResponseDTO } from '../../generated-api/model/pagoPrestamoResponseDTO';
 import { AmortizacionDTO } from '../../generated-api/model/amortizacionDTO';
-import { ClienteResponseDTO } from '../../generated-api/model/clienteResponseDTO';
 import { ValidationService } from '../../core/services/validation.service';
 
 interface Column {
@@ -44,20 +42,18 @@ interface Column {
   selector: 'app-prestamos',
   imports: [Toast, ToolbarModule, TableModule, ButtonModule, DialogModule, IconFieldModule,
     SelectModule, InputIconModule, Tag, ConfirmDialog, FormsModule,
-    CommonModule, MessageModule, ConfirmDialogModule, Header, InputTextModule, InputNumberModule, TooltipModule],
-  providers: [MessageService, ConfirmationService, PrstamosService, PagosDePrstamosService, ClienteControllerService, CuentasDeAhorroService],
+    CommonModule, MessageModule, ConfirmDialogModule, Header, InputTextModule, InputNumberModule, TooltipModule,
+    PrestamoFormDialog, PagoFormDialog],
+  providers: [MessageService, ConfirmationService, PrstamosService, PagosDePrstamosService, CuentasDeAhorroService],
   templateUrl: './prestamos.html',
   styleUrl: './prestamos.css',
 })
 export class Prestamos implements OnInit {
 
-  prestamoDialog: boolean = false;
   aprobarDialog: boolean = false;
   calcularCuotaDialog: boolean = false;
   amortizacionDialog: boolean = false;
-  pagoDialog: boolean = false;
   prestamos: PrestamoResponseDTO[] = [];
-  prestamo: PrestamoRequestDTO = this.getEmptyPrestamo();
   prestamoId?: number;
   selectedPrestamos: PrestamoResponseDTO[] = [];
   submitted: boolean = false;
@@ -74,15 +70,6 @@ export class Prestamos implements OnInit {
   // Tabla de amortización
   tablaAmortizacion: AmortizacionDTO[] = [];
 
-  // Para registrar pago
-  pago: PagoPrestamoRequestDTO = this.getEmptyPago();
-  prestamoSeleccionadoParaPago?: PrestamoResponseDTO;
-  cuotasDisponibles: any[] = [];
-
-  // Clientes para el select
-  clientes: ClienteResponseDTO[] = [];
-  clientesOptions: any[] = [];
-
   // Estados
   estados: any[] = [];
   selectedEstado: string = 'TODOS';
@@ -92,6 +79,8 @@ export class Prestamos implements OnInit {
   plazoEditado: { [key: number]: number } = {};
 
   @ViewChild('dt') dt!: Table;
+  @ViewChild(PrestamoFormDialog) prestamoFormDialog!: PrestamoFormDialog;
+  @ViewChild(PagoFormDialog) pagoFormDialog!: PagoFormDialog;
   cols: Column[] = [];
 
   constructor(
@@ -99,13 +88,12 @@ export class Prestamos implements OnInit {
     private confirmationService: ConfirmationService,
     private prestamoService: PrstamosService,
     private pagosService: PagosDePrstamosService,
-    private clienteService: ClienteControllerService,
     private cuentasService: CuentasDeAhorroService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private router: Router
   ) {
     afterNextRender(() => {
       this.loadPrestamos();
-      this.loadClientes();
     });
   }
 
@@ -144,7 +132,7 @@ export class Prestamos implements OnInit {
     if (this.selectedEstado === 'TODOS') {
       this.prestamoService.obtenerTodosLosPrestamos().subscribe({
         next: (data) => {
-          this.prestamos = data;
+          this.prestamos = this.ordenarPorRecientes(data);
         },
         error: (error) => {
           this.enviarMensajeError('No se pudieron cargar los préstamos');
@@ -154,7 +142,7 @@ export class Prestamos implements OnInit {
     } else {
       this.prestamoService.obtenerPrestamosPorEstado(this.selectedEstado).subscribe({
         next: (data) => {
-          this.prestamos = data;
+          this.prestamos = this.ordenarPorRecientes(data);
           console.log('prestamos por estado', this.prestamos);
         },
         error: (error) => {
@@ -165,28 +153,17 @@ export class Prestamos implements OnInit {
     }
   }
 
-  loadClientes(): void {
-    this.clienteService.obtenerClientesPorEstado('ACTIVO').subscribe({
-      next: (data) => {
-        this.clientes = data;
-        this.clientesOptions = data.map(cliente => ({
-          label: `${cliente.nombres} ${cliente.apellidos} - ${cliente.cedula}`,
-          value: cliente.idCliente,
-          // Agregar información adicional para mejorar la búsqueda
-          searchText: `${cliente.nombres} ${cliente.apellidos} ${cliente.cedula}`.toLowerCase()
-        }));
-      },
-      error: (error) => {
-        console.error('Error loading clientes:', error);
-      }
-    });
+  /**
+   * Prestamo no tiene un campo único de última actualización (tiene fechaSolicitud,
+   * fechaAprobacion y fechaDesembolso por separado, y ninguna cambia al editar el
+   * plazo), así que se usa idPrestamo descendente: el más alto es el más reciente.
+   */
+  private ordenarPorRecientes(prestamos: PrestamoResponseDTO[]): PrestamoResponseDTO[] {
+    return [...prestamos].sort((a, b) => (b.idPrestamo ?? 0) - (a.idPrestamo ?? 0));
   }
 
   openNew(): void {
-    this.prestamo = this.getEmptyPrestamo();
-    this.prestamoId = undefined;
-    this.submitted = false;
-    this.prestamoDialog = true;
+    this.prestamoFormDialog.abrirNuevo();
   }
 
   openCalcularCuota(): void {
@@ -262,159 +239,23 @@ export class Prestamos implements OnInit {
   }
 
   hideDialog(): void {
-    this.prestamoDialog = false;
     this.aprobarDialog = false;
     this.calcularCuotaDialog = false;
     this.amortizacionDialog = false;
-    this.pagoDialog = false;
     this.submitted = false;
   }
 
   openPago(prestamo: PrestamoResponseDTO): void {
-    if (!prestamo.idPrestamo) {
-      return;
-    }
-    this.prestamoSeleccionadoParaPago = prestamo;
-    this.pago = this.getEmptyPago();
-    this.pago.idPrestamo = prestamo.idPrestamo;
-    this.cuotasDisponibles = [];
-    this.submitted = false;
-
-    // Cargar cuotas pendientes
-    this.pagosService.obtenerCuotasPendientes(prestamo.idPrestamo).subscribe({
-      next: (cuotas) => {
-        this.cuotasDisponibles = cuotas.map(cuota => ({
-          label: `Cuota #${cuota.numeroCuota} - ${this.formatCurrency(cuota.montoCuota)} - Vence: ${this.formatDate(cuota.fechaVencimiento)}`,
-          value: cuota.numeroCuota,
-          cuota: cuota
-        }));
-        // Si hay cuotas, seleccionar la primera por defecto
-        if (this.cuotasDisponibles.length > 0) {
-          this.pago.numeroCuota = this.cuotasDisponibles[0].value;
-          this.onCuotaSeleccionada();
-        }
-      },
-      error: (error) => {
-        this.enviarMensajeError('No se pudieron cargar las cuotas pendientes');
-        console.error('Error loading cuotas pendientes:', error);
-      }
-    });
-
-    this.pagoDialog = true;
+    this.pagoFormDialog.abrirParaPrestamo(prestamo);
   }
 
-  onCuotaSeleccionada(): void {
-    const cuotaSeleccionada = this.cuotasDisponibles.find(c => c.value === this.pago.numeroCuota);
-    if (cuotaSeleccionada && cuotaSeleccionada.cuota) {
-      // Establecer el monto por defecto como el monto de la cuota
-      this.pago.montoPagado = cuotaSeleccionada.cuota.montoCuota || 0;
-      // Si hay mora, incluirla
-      if (cuotaSeleccionada.cuota.mora) {
-        this.pago.mora = cuotaSeleccionada.cuota.mora;
-      }
+  // Fase 2: navegar al hub del cliente dueño del préstamo. El DTO ya trae idCliente.
+  verCliente(prestamo: PrestamoResponseDTO): void {
+    if (prestamo.idCliente) {
+      this.router.navigate(['/clientes', prestamo.idCliente], { queryParams: { origen: 'prestamos' } });
+    } else {
+      this.enviarMensajeError('No se pudo identificar al cliente del préstamo');
     }
-  }
-
-  async registrarPago(): Promise<void> {
-    this.submitted = true;
-
-    // Validar campos requeridos
-    if (!this.pago.idPrestamo) {
-      this.enviarMensajeAdvertencia('El préstamo es requerido');
-      return;
-    }
-
-    if (!this.pago.numeroCuota || this.pago.numeroCuota <= 0) {
-      this.enviarMensajeAdvertencia('Debe seleccionar una cuota');
-      return;
-    }
-
-    if (!this.pago.montoPagado || this.pago.montoPagado <= 0) {
-      this.enviarMensajeAdvertencia('El monto pagado debe ser mayor a 0');
-      return;
-    }
-
-    if (!this.pago.metodoPago || this.pago.metodoPago.trim() === '') {
-      this.enviarMensajeAdvertencia('El método de pago es requerido');
-      return;
-    }
-
-    // Confirmar antes de registrar
-    const cuotaSeleccionada = this.cuotasDisponibles.find(c => c.value === this.pago.numeroCuota);
-    const montoTotal = this.pago.montoPagado + (this.pago.mora || 0);
-    
-    this.confirmationService.confirm({
-      message: `¿Está seguro que desea registrar el pago de la cuota #${this.pago.numeroCuota} por un monto de ${this.formatCurrency(montoTotal)}?`,
-      header: 'Confirmar Registro de Pago',
-      icon: 'pi pi-exclamation-triangle',
-      accept: () => {
-        this.pagosService.registrarPago(this.pago).subscribe({
-          next: (response) => {
-            this.enviarMensajeExito(`Pago de cuota #${response.numeroCuotaPagada} registrado correctamente`);
-            this.pagoDialog = false;
-            this.pago = this.getEmptyPago();
-            // Recargar préstamos para actualizar saldos
-            this.loadPrestamos();
-          },
-          error: (error) => {
-            console.error('Error registering pago:', error);
-            this.enviarMensajeError(error.error?.message || 'No se pudo registrar el pago');
-          }
-        });
-      },
-      reject: () => {
-        // No hacer nada, el usuario canceló
-      }
-    });
-  }
-
-  private getEmptyPago(): PagoPrestamoRequestDTO {
-    return {
-      idPrestamo: 0,
-      numeroCuota: 0,
-      montoPagado: 0,
-      metodoPago: '',
-      referencia: '',
-      mora: 0
-    };
-  }
-
-  async savePrestamo(): Promise<void> {
-    this.submitted = true;
-
-    // Validar campos requeridos
-    const camposVacios = this.validarCamposRequeridos();
-    if (camposVacios.length > 0) {
-      this.enviarMensajeAdvertencia(`Es obligatorio: ${camposVacios.join(', ')}`);
-      return;
-    }
-
-    // Validar monto
-    if (this.prestamo.montoSolicitado <= 0) {
-      this.enviarMensajeAdvertencia('El monto solicitado debe ser mayor a 0');
-      return;
-    }
-
-    // Validar plazo
-    if (this.prestamo.plazoMeses <= 0) {
-      this.enviarMensajeAdvertencia('El plazo en meses debe ser mayor a 0');
-      return;
-    }
-
-    // Crear nuevo préstamo
-    this.prestamoService.solicitarPrestamo(this.prestamo).subscribe({
-      next: (response) => {
-        this.prestamos.push(response);
-        this.enviarMensajeExito('Préstamo solicitado correctamente');
-        this.prestamoDialog = false;
-        this.prestamo = this.getEmptyPrestamo();
-        this.loadPrestamos();
-      },
-      error: (error) => {
-        this.enviarMensajeError('No se pudo solicitar el préstamo');
-        console.error('Error creating prestamo:', error);
-      }
-    });
   }
 
   aprobarPrestamo(): void {
@@ -455,24 +296,6 @@ export class Prestamos implements OnInit {
         console.error('Error approving prestamo:', error);
       }
     });
-  }
-
-  validarCamposRequeridos(): string[] {
-    const camposVacios: string[] = [];
-
-    if (!this.prestamo.idCliente) {
-      camposVacios.push('Cliente');
-    }
-
-    if (!this.prestamo.montoSolicitado || this.prestamo.montoSolicitado <= 0) {
-      camposVacios.push('Monto Solicitado');
-    }
-
-    if (!this.prestamo.plazoMeses || this.prestamo.plazoMeses <= 0) {
-      camposVacios.push('Plazo en Meses');
-    }
-
-    return camposVacios;
   }
 
   getSeverity(estado?: string): "success" | "secondary" | "info" | "warn" | "danger" | "contrast" | undefined {
@@ -633,15 +456,6 @@ export class Prestamos implements OnInit {
         this.cancelarEdicionPlazo(prestamo);
       }
     });
-  }
-
-  private getEmptyPrestamo(): PrestamoRequestDTO {
-    return {
-      idCliente: 0,
-      montoSolicitado: 0,
-      plazoMeses: 0,
-      tipoPrestamo: 'PERSONAL'
-    };
   }
 
   // Métodos para validar entrada en tiempo real

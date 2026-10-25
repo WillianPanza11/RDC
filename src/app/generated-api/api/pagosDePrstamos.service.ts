@@ -18,6 +18,8 @@ import { CustomHttpUrlEncodingCodec }                        from '../encoder';
 import { Observable }                                        from 'rxjs';
 
 import { AmortizacionDTO } from '../model/amortizacionDTO';
+import { CorregirPagoRequestDTO } from '../model/corregirPagoRequestDTO';
+import { MovimientoCajaResponseDTO } from '../model/movimientoCajaResponseDTO';
 import { PagoPrestamoRequestDTO } from '../model/pagoPrestamoRequestDTO';
 import { PagoPrestamoResponseDTO } from '../model/pagoPrestamoResponseDTO';
 import { ResumenPagosPrestamoDTO } from '../model/resumenPagosPrestamoDTO';
@@ -57,6 +59,65 @@ export class PagosDePrstamosService {
         return false;
     }
 
+
+    /**
+     * Corregir un pago tras cierre de caja
+     * Genera un MovimientoCaja de ajuste (CORRECCION_PAGO) sin modificar el PagoPrestamo original ni ninguna CierreCaja histórica. Solo Presidente, Secretario o Admin.
+     * @param body 
+     * @param idPago 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public corregirPago(body: CorregirPagoRequestDTO, idPago: number, observe?: 'body', reportProgress?: boolean): Observable<MovimientoCajaResponseDTO>;
+    public corregirPago(body: CorregirPagoRequestDTO, idPago: number, observe?: 'response', reportProgress?: boolean): Observable<HttpResponse<MovimientoCajaResponseDTO>>;
+    public corregirPago(body: CorregirPagoRequestDTO, idPago: number, observe?: 'events', reportProgress?: boolean): Observable<HttpEvent<MovimientoCajaResponseDTO>>;
+    public corregirPago(body: CorregirPagoRequestDTO, idPago: number, observe: any = 'body', reportProgress: boolean = false ): Observable<any> {
+
+        if (body === null || body === undefined) {
+            throw new Error('Required parameter body was null or undefined when calling corregirPago.');
+        }
+
+        if (idPago === null || idPago === undefined) {
+            throw new Error('Required parameter idPago was null or undefined when calling corregirPago.');
+        }
+
+        let headers = this.defaultHeaders;
+
+        // authentication (Bearer Authentication) required
+        if (this.configuration.accessToken) {
+            const accessToken = typeof this.configuration.accessToken === 'function'
+                ? this.configuration.accessToken()
+                : this.configuration.accessToken;
+            headers = headers.set('Authorization', 'Bearer ' + accessToken);
+        }
+        // to determine the Accept header
+        let httpHeaderAccepts: string[] = [
+            '*/*'
+        ];
+        const httpHeaderAcceptSelected: string | undefined = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        if (httpHeaderAcceptSelected != undefined) {
+            headers = headers.set('Accept', httpHeaderAcceptSelected);
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected != undefined) {
+            headers = headers.set('Content-Type', httpContentTypeSelected);
+        }
+
+        return this.httpClient.request<MovimientoCajaResponseDTO>('post',`${this.basePath}/api/pagos-prestamos/${encodeURIComponent(String(idPago))}/corregir`,
+            {
+                body: body,
+                withCredentials: this.configuration.withCredentials,
+                headers: headers,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
 
     /**
      * Obtener cuotas pagadas

@@ -15,6 +15,6 @@ export interface RegisterRequestDTO {
     email: string;
     password: string;
     nombreCompleto: string;
-    roles?: Array<string>;
+    cedula: string;
     idCliente?: number;
 }

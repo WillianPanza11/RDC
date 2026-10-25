@@ -102,7 +102,12 @@
         </ng-template>
         <ng-template #body let-pago>
             <tr>
-                <td>{{ pago.nombreCliente }}</td>
+                <td>
+                    <button type="button" class="cliente-link" pTooltip="Ver cliente" tooltipPosition="top"
+                        (click)="verCliente(pago)">
+                        {{ pago.nombreCliente }}
+                    </button>
+                </td>
                 <td>{{ pago.cedula || 'N/A' }}</td>
                 <td>{{ pago.numeroCuentaPrestamo || 'N/A' }}</td>
                 <td>{{ pago.numeroCuotaPagada }}</td>
@@ -113,8 +118,11 @@
                 <td>{{ getMetodoPagoLabel(pago.metodoPago) }}</td>
                 <td>{{ formatDate(pago.fechaPago) }}</td>
                 <td>
-                    <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
+                    <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info" class="mr-2"
                         (click)="verDetalles(pago)" pTooltip="Ver detalles del pago" />
+                    <p-button *ngIf="authService.hasAnyRole(['ROLE_PRESIDENTE','ROLE_SECRETARIO','ROLE_ADMIN'])"
+                        icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="warn"
+                        (click)="abrirCorregirPago(pago)" pTooltip="Corregir pago" />
                 </td>
             </tr>
         </ng-template>
@@ -212,4 +220,7 @@
             <p-button label="Cerrar" icon="pi pi-times" (click)="detallesDialog = false" />
         </ng-template>
     </p-dialog>
+
+    <app-corregir-pago-dialog (corregido)="onPagoCorregido()" />
+    <p-confirmDialog [style]="{ width: '450px' }" />
 </div>

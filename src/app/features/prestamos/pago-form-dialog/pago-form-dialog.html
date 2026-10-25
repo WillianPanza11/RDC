@@ -1,0 +1,83 @@
+<p-dialog [(visible)]="visible" [style]="{ width: '600px' }" header="Registrar Pago de Préstamo" [modal]="true">
+    <ng-template #content>
+        <div class="flex flex-col gap-6">
+            <div *ngIf="prestamoSeleccionado" class="p-4 bg-blue-50 rounded mb-4">
+                <h3 class="font-bold mb-2">Información del Préstamo</h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div><strong>Cliente:</strong> {{ prestamoSeleccionado.nombreCliente }}</div>
+                    <div><strong>Monto Aprobado:</strong> {{ formatCurrency(prestamoSeleccionado.montoAprobado) }}</div>
+                    <div><strong>Saldo Pendiente:</strong> {{ formatCurrency(prestamoSeleccionado.saldoPendiente) }}</div>
+                    <div><strong>Cuota Mensual:</strong> {{ formatCurrency(prestamoSeleccionado.cuotaMensual) }}</div>
+                </div>
+            </div>
+
+            <!-- Vista de comprobante: reemplaza el formulario una vez que el backend confirma el pago -->
+            <ng-container *ngIf="pagoRegistrado; else formulario">
+                <div class="p-4 bg-green-50 rounded border border-green-200">
+                    <h3 class="font-bold mb-3 text-green-700"><i class="pi pi-check-circle mr-2"></i>Pago Registrado</h3>
+                    <div class="flex flex-col gap-2 text-sm">
+                        <div class="flex justify-between">
+                            <span><strong>Monto Recibido:</strong></span>
+                            <span>{{ formatCurrency(pagoRegistrado.montoRecibido) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span><strong>Vuelto:</strong></span>
+                            <span>{{ formatCurrency(pagoRegistrado.vuelto) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span><strong>Cuotas Cubiertas:</strong></span>
+                            <span>{{ pagoRegistrado.numeroCuotasCubiertas }}</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t">
+                            <span><strong>Registrado por:</strong></span>
+                            <span>{{ pagoRegistrado.nombreCajero || 'Cajero no registrado' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+
+            <ng-template #formulario>
+                <div *ngIf="cuotaPendiente" class="p-3 bg-gray-100 rounded text-sm">
+                    <strong>Cuota Pendiente Actual (referencial):</strong>
+                    Cuota #{{ cuotaPendiente.numeroCuota }} - {{ formatCurrency(cuotaPendiente.montoCuota) }}
+                    - Vence: {{ formatDate(cuotaPendiente.fechaVencimiento) }}
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label for="montoRecibido" class="block font-bold mb-3">Monto Recibido *</label>
+                        <p-inputnumber [(ngModel)]="pago.montoRecibido" mode="currency" currency="USD" locale="es-EC"
+                            [min]="0.01" [max]="1000000" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && (!pago.montoRecibido || pago.montoRecibido <= 0)">
+                            El monto recibido es requerido y debe ser mayor a 0.</small>
+                    </div>
+
+                    <div class="col-span-12 md:col-span-6">
+                        <label for="mora" class="block font-bold mb-3">Mora (Opcional)</label>
+                        <p-inputnumber [(ngModel)]="pago.mora" mode="currency" currency="USD" locale="es-EC"
+                            [min]="0" [max]="10000" class="w-full" />
+                    </div>
+
+                    <div class="col-span-12 md:col-span-6">
+                        <label for="metodoPago" class="block font-bold mb-3">Método de Pago *</label>
+                        <p-select [options]="metodosPago" [(ngModel)]="pago.metodoPago" optionLabel="label"
+                            optionValue="value" appendTo="body" placeholder="Seleccione el método" class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && !pago.metodoPago">El método de pago es requerido.</small>
+                    </div>
+
+                    <div class="col-span-12">
+                        <label for="referencia" class="block font-bold mb-3">Referencia (Opcional)</label>
+                        <input type="text" pInputText id="referencia" [(ngModel)]="pago.referencia"
+                            placeholder="Número de referencia, cheque, etc." class="w-full" />
+                    </div>
+                </div>
+            </ng-template>
+        </div>
+    </ng-template>
+
+    <ng-template #footer>
+        <p-button *ngIf="!pagoRegistrado" label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+        <p-button *ngIf="!pagoRegistrado" label="Registrar Pago" icon="pi pi-check" severity="success" (click)="registrarPago()" />
+        <p-button *ngIf="pagoRegistrado" label="Cerrar" icon="pi pi-times" (click)="hideDialog()" />
+    </ng-template>
+</p-dialog>

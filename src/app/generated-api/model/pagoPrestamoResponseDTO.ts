@@ -9,12 +9,17 @@
  * https://github.com/swagger-api/swagger-codegen.git
  * Do not edit the class manually.
  */
+import { DetalleCuotaPagadaDTO } from './detalleCuotaPagadaDTO';
 
 export interface PagoPrestamoResponseDTO { 
     idPago?: number;
     idPrestamo?: number;
     numeroCuotaPagada?: number;
+    numeroCuotasCubiertas?: number;
+    detalleCuotas?: Array<DetalleCuotaPagadaDTO>;
     montoPagado?: number;
+    montoRecibido?: number;
+    vuelto?: number;
     capitalPagado?: number;
     interesPagado?: number;
     mora?: number;
@@ -24,4 +29,5 @@ export interface PagoPrestamoResponseDTO {
     nombreCliente?: string;
     cedula?: string;
     numeroCuentaPrestamo?: string;
+    nombreCajero?: string;
 }

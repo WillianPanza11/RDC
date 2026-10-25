@@ -1,0 +1,83 @@
+<p-dialog [(visible)]="visible" [style]="{ width: '500px' }" header="Cerrar Caja" [modal]="true">
+    <ng-template #content>
+        <div class="flex flex-col gap-6">
+            <div *ngIf="cargandoResumen" class="text-center p-4">
+                <i class="pi pi-spin pi-spinner" style="font-size: 1.5rem"></i>
+                <p class="mt-2">Cargando resumen de caja...</p>
+            </div>
+
+            <ng-container *ngIf="!cargandoResumen">
+                <div class="p-3 bg-gray-100 rounded text-sm">
+                    <div class="flex justify-between">
+                        <span><strong>Total Cobrado (según sistema):</strong></span>
+                        <span>{{ formatCurrency(totalCobrado) }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-12">
+                        <label for="efectivoContado" class="block font-bold mb-3">Efectivo Contado *</label>
+                        <p-inputnumber [(ngModel)]="efectivoContado" mode="currency" currency="USD" locale="es-EC"
+                            [min]="0" [max]="1000000" class="w-full" />
+                        <small class="text-red-500"
+                            *ngIf="submitted && (efectivoContado === undefined || efectivoContado === null || efectivoContado < 0)">
+                            El efectivo contado es requerido.</small>
+                    </div>
+                </div>
+
+                <div *ngIf="efectivoContado !== undefined && efectivoContado !== null"
+                    class="p-3 rounded text-sm"
+                    [class.bg-green-50]="!hayDiferencia" [class.bg-red-50]="hayDiferencia">
+                    <div class="flex justify-between font-bold">
+                        <span>Diferencia:</span>
+                        <span [class.text-green-700]="!hayDiferencia" [class.text-red-700]="hayDiferencia">
+                            {{ formatCurrency(diferencia) }}
+                        </span>
+                    </div>
+                </div>
+
+                <div *ngIf="esCajaDeOtroCajero" class="p-3 bg-orange-50 rounded text-sm text-orange-800">
+                    Estás cerrando la caja de otro cajero. Las observaciones son obligatorias.
+                </div>
+
+                <div class="grid grid-cols-12 gap-4" *ngIf="requiereObservaciones">
+                    <div class="col-span-12">
+                        <label for="observaciones" class="block font-bold mb-3">Observaciones *</label>
+                        <textarea pTextarea id="observaciones" [(ngModel)]="observaciones" required fluid
+                            rows="3" autoResize
+                            [placeholder]="esCajaDeOtroCajero ? 'Explique por qué cierra la caja de otro cajero' : 'Explique el motivo de la diferencia'"></textarea>
+                        <small class="text-red-500" *ngIf="submitted && !observaciones.trim()">
+                            Las observaciones son obligatorias.</small>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4" *ngIf="requiereAutorizador">
+                    <div class="col-span-12">
+                        <label for="idAutorizador" class="block font-bold mb-3">Autorizado por *</label>
+                        <p-select [options]="autorizadores" [(ngModel)]="idAutorizador" optionLabel="label"
+                            optionValue="value" appendTo="body" placeholder="Seleccione quién autoriza"
+                            class="w-full" />
+                        <small class="text-red-500" *ngIf="submitted && !idAutorizador">
+                            Debe seleccionar quién autoriza el cierre.</small>
+                    </div>
+
+                    <div class="col-span-12">
+                        <label for="passwordAutorizador" class="block font-bold mb-3">Contraseña de quien
+                            autoriza *</label>
+                        <p-password id="passwordAutorizador" [(ngModel)]="passwordAutorizador" [toggleMask]="true"
+                            [feedback]="false" styleClass="w-full" inputStyleClass="w-full" fluid
+                            placeholder="La ingresa quien autoriza, no el cajero" />
+                        <small class="text-red-500" *ngIf="submitted && !passwordAutorizador">
+                            Quien autoriza debe ingresar su contraseña.</small>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+    </ng-template>
+
+    <ng-template #footer>
+        <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+        <p-button label="Cerrar Caja" icon="pi pi-check" severity="success" [disabled]="cargandoResumen"
+            (click)="confirmarCierre()" />
+    </ng-template>
+</p-dialog>

@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
 import { ToolbarModule } from 'primeng/toolbar';
@@ -11,7 +12,7 @@ import { InputIconModule } from 'primeng/inputicon';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
@@ -19,6 +20,8 @@ import { PagosDePrstamosService } from '../../generated-api/api/pagosDePrstamos.
 import { ClienteControllerService } from '../../generated-api/api/clienteController.service';
 import { PagoPrestamoResponseDTO } from '../../generated-api/model/pagoPrestamoResponseDTO';
 import { ClienteResponseDTO } from '../../generated-api/model/clienteResponseDTO';
+import { AuthService } from '../../core/services/auth.service';
+import { CorregirPagoDialog } from './corregir-pago-dialog/corregir-pago-dialog';
 
 interface Column {
   field: string;
@@ -28,13 +31,15 @@ interface Column {
 @Component({
   selector: 'app-pagos',
   imports: [Toast, ToolbarModule, TableModule, ButtonModule, DialogModule, IconFieldModule,
-    SelectModule, InputIconModule, FormsModule, CommonModule, MessageModule, ConfirmDialogModule, 
-    Header, InputTextModule, TooltipModule],
-  providers: [MessageService, PagosDePrstamosService, ClienteControllerService],
+    SelectModule, InputIconModule, FormsModule, CommonModule, MessageModule, ConfirmDialogModule,
+    Header, InputTextModule, TooltipModule, CorregirPagoDialog],
+  providers: [MessageService, ConfirmationService, PagosDePrstamosService, ClienteControllerService],
   templateUrl: './pagos.html',
   styleUrl: './pagos.css',
 })
 export class Pagos implements OnInit {
+
+  @ViewChild(CorregirPagoDialog) corregirPagoDialog!: CorregirPagoDialog;
 
   pagos: PagoPrestamoResponseDTO[] = [];
   pagoSeleccionado?: PagoPrestamoResponseDTO;
@@ -53,7 +58,9 @@ export class Pagos implements OnInit {
   constructor(
     private messageService: MessageService,
     private pagosService: PagosDePrstamosService,
-    private clienteService: ClienteControllerService
+    private clienteService: ClienteControllerService,
+    private router: Router,
+    protected authService: AuthService
   ) {
     afterNextRender(() => {
       this.loadPagos();
@@ -84,7 +91,7 @@ export class Pagos implements OnInit {
     if (this.clienteFiltro) {
       this.pagosService.obtenerPagosPorCliente(this.clienteFiltro).subscribe({
         next: (data) => {
-          this.pagos = data;
+          this.pagos = this.ordenarPorRecientes(data);
         },
         error: (error) => {
           this.enviarMensajeError('No se pudieron cargar los pagos');
@@ -94,7 +101,7 @@ export class Pagos implements OnInit {
     } else {
       this.pagosService.obtenerTodosLosPagos().subscribe({
         next: (data) => {
-          this.pagos = data;
+          this.pagos = this.ordenarPorRecientes(data);
         },
         error: (error) => {
           this.enviarMensajeError('No se pudieron cargar los pagos');
@@ -102,6 +109,18 @@ export class Pagos implements OnInit {
         }
       });
     }
+  }
+
+  /**
+   * PagoPrestamo tiene un único campo de fecha (fechaPago), fijado al crear el
+   * pago y que no cambia con corregirPago (esa corrección genera un ajuste
+   * aparte y no toca el pago original), así que ordenar por fechaPago
+   * descendente ya cubre el caso de "más reciente primero".
+   */
+  private ordenarPorRecientes(pagos: PagoPrestamoResponseDTO[]): PagoPrestamoResponseDTO[] {
+    const fechaOrden = (pago: PagoPrestamoResponseDTO): number =>
+      pago.fechaPago ? new Date(pago.fechaPago).getTime() : 0;
+    return [...pagos].sort((a, b) => fechaOrden(b) - fechaOrden(a));
   }
 
   loadClientes(): void {
@@ -152,6 +171,48 @@ export class Pagos implements OnInit {
 
   onClienteFiltroChange(): void {
     this.loadPagos();
+  }
+
+  abrirCorregirPago(pago: PagoPrestamoResponseDTO): void {
+    this.corregirPagoDialog.abrirParaPago(pago);
+  }
+
+  onPagoCorregido(): void {
+    this.loadPagos();
+  }
+
+  /**
+   * Fase 2: navegar al hub del cliente dueño del pago.
+   * PagoPrestamoResponseDTO no trae idCliente, solo `cedula`, así que se resuelve
+   * primero contra `this.clientes` (ya cargado para el filtro). Si el cliente no
+   * está ahí (por ejemplo quedó INACTIVO y ese filtro solo trae ACTIVOS), se cae
+   * a obtenerClientePorCedula, que ya es un endpoint existente y usado en Clientes.
+   */
+  verCliente(pago: PagoPrestamoResponseDTO): void {
+    if (!pago.cedula) {
+      this.enviarMensajeError('No se pudo identificar al cliente del pago');
+      return;
+    }
+
+    const clienteEnMemoria = this.clientes.find(c => c.cedula === pago.cedula);
+    if (clienteEnMemoria?.idCliente) {
+      this.router.navigate(['/clientes', clienteEnMemoria.idCliente], { queryParams: { origen: 'pagos' } });
+      return;
+    }
+
+    this.clienteService.obtenerClientePorCedula(pago.cedula).subscribe({
+      next: (cliente) => {
+        if (cliente.idCliente) {
+          this.router.navigate(['/clientes', cliente.idCliente], { queryParams: { origen: 'pagos' } });
+        } else {
+          this.enviarMensajeError('No se pudo encontrar al cliente');
+        }
+      },
+      error: (error) => {
+        this.enviarMensajeError('No se pudo encontrar al cliente');
+        console.error('Error resolving cliente por cedula:', error);
+      }
+    });
   }
 
   exportCSV(): void {
