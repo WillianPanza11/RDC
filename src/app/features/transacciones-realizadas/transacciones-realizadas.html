@@ -5,6 +5,12 @@
 <div class="card">
     <p-toast />
 
+    <!-- Breadcrumb: solo aparece si se llegó desde el hub de un cliente -->
+    <div class="mb-4" *ngIf="origenClienteId">
+        <p-button [label]="'Volver a ' + (origenClienteNombre || 'cliente')" icon="pi pi-arrow-left" text
+            (click)="volverAlCliente()" />
+    </div>
+
     <p-table #dt [value]="transaccionesFiltradas" [rows]="10" [columns]="cols" [paginator]="true"
         [globalFilterFields]="['descripcion', 'tipoTransaccion', 'metodoPago']" [tableStyle]="{ 'min-width': '75rem' }"
         [rowHover]="true" dataKey="idTransaccion"
@@ -133,7 +139,12 @@
         <ng-template #body let-transaccion>
             <tr>
                 <td>{{ transaccion.fechaTransaccion | date:'short' }}</td>
-                <td>{{ getNombreCuenta(transaccion.idCuenta) }}</td>
+                <td>
+                    <button type="button" class="cliente-link" pTooltip="Ver cliente" tooltipPosition="top"
+                        (click)="verCliente(transaccion)">
+                        {{ getNombreCuenta(transaccion.idCuenta) }}
+                    </button>
+                </td>
                 <td>
                     <p-tag [value]="transaccion.tipoTransaccion"
                         [severity]="getSeverity(transaccion.tipoTransaccion)" />

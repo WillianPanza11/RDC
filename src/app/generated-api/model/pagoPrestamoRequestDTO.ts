@@ -12,8 +12,7 @@
 
 export interface PagoPrestamoRequestDTO { 
     idPrestamo: number;
-    numeroCuota: number;
-    montoPagado: number;
+    montoRecibido: number;
     metodoPago: string;
     referencia?: string;
     mora?: number;

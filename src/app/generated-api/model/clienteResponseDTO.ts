@@ -21,6 +21,7 @@ export interface ClienteResponseDTO {
     fechaNacimiento?: string;
     ingresoMensual?: number;
     estado?: ClienteResponseDTO.EstadoEnum;
+    tipoSocio?: ClienteResponseDTO.TipoSocioEnum;
     fechaRegistro?: Date;
 }
 export namespace ClienteResponseDTO {
@@ -30,5 +31,10 @@ export namespace ClienteResponseDTO {
         INACTIVO: 'INACTIVO' as EstadoEnum,
         BLOQUEADO: 'BLOQUEADO' as EstadoEnum,
         SUSPENDIDO: 'SUSPENDIDO' as EstadoEnum
+    };
+    export type TipoSocioEnum = 'MAYORISTA' | 'MINORISTA';
+    export const TipoSocioEnum = {
+        MAYORISTA: 'MAYORISTA' as TipoSocioEnum,
+        MINORISTA: 'MINORISTA' as TipoSocioEnum
     };
 }

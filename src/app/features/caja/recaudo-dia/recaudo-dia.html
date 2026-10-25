@@ -1,0 +1,69 @@
+<!-- header-->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600;">Recaudo del Día</h1>
+        <div class="flex items-center gap-2">
+            <label for="fecha" class="font-bold">Fecha:</label>
+            <p-datepicker id="fecha" [(ngModel)]="fechaSeleccionada" dateFormat="dd/mm/yy"
+                (ngModelChange)="onFechaChange()" [showIcon]="true" />
+        </div>
+    </div>
+
+    <div *ngIf="cargando" class="text-center p-6">
+        <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+        <p class="mt-2">Cargando recaudo...</p>
+    </div>
+
+    <div *ngIf="!cargando && recaudo" class="flex flex-col gap-6">
+        <div class="grid grid-cols-3 gap-4">
+            <div class="p-4 bg-gray-50 rounded text-center">
+                <div class="text-sm text-gray-600">Total Cobrado</div>
+                <div class="text-2xl font-bold text-green-600">{{ formatCurrency(recaudo.totalCobrado) }}</div>
+            </div>
+            <div class="p-4 bg-gray-50 rounded text-center">
+                <div class="text-sm text-gray-600">Total Pendiente</div>
+                <div class="text-2xl font-bold text-orange-600">{{ formatCurrency(recaudo.totalPendiente) }}</div>
+            </div>
+            <div class="p-4 bg-gray-50 rounded text-center">
+                <div class="text-sm text-gray-600">Total Esperado</div>
+                <div class="text-2xl font-bold">{{ formatCurrency(recaudo.totalEsperado) }}</div>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="font-bold mb-3">Detalle por Cajero</h3>
+            <p-table [value]="recaudo.detallePorCajero || []" [tableStyle]="{ 'min-width': '40rem' }">
+                <ng-template #header>
+                    <tr>
+                        <th>Cajero</th>
+                        <th>Estado</th>
+                        <th>Total Cobrado</th>
+                        <th>Diferencia</th>
+                    </tr>
+                </ng-template>
+                <ng-template #body let-detalle>
+                    <tr>
+                        <td>{{ detalle.nombreCajero || 'Cajero no registrado' }}</td>
+                        <td><p-tag [value]="detalle.estado" [severity]="getSeverity(detalle.estado)" /></td>
+                        <td>{{ formatCurrency(detalle.totalCobrado) }}</td>
+                        <td>
+                            <span *ngIf="detalle.diferencia !== undefined && detalle.diferencia !== null"
+                                [class.text-red-600]="detalle.diferencia !== 0">
+                                {{ formatCurrency(detalle.diferencia) }}
+                            </span>
+                            <span *ngIf="detalle.diferencia === undefined || detalle.diferencia === null">-</span>
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template #emptymessage>
+                    <tr>
+                        <td colspan="4" class="text-center p-4">No hay cajeros con movimientos en esta fecha</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div>
+</div>

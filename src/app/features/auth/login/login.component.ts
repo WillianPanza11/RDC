@@ -86,12 +86,14 @@ export class LoginComponent {
       },
       error: (error) => {
         this.isLoading.set(false);
-        if (error.status === 401) {
-          this.errorMessage.set('Usuario o contraseña incorrectos');
-        } else if (error.status === 0) {
+        if (error.status === 0) {
           this.errorMessage.set('No se pudo conectar con el servidor');
         } else {
-          this.errorMessage.set('Error al iniciar sesión. Por favor, intente nuevamente.');
+          // El backend ya manda el mensaje correcto (credenciales incorrectas,
+          // cuenta bloqueada temporalmente, etc.) en error.error.message —
+          // ver GlobalExceptionHandler. El texto fijo queda solo de respaldo
+          // por si llega algo sin ese formato.
+          this.errorMessage.set(error.error?.message || 'Error al iniciar sesión. Por favor, intente nuevamente.');
         }
       },
       complete: () => {

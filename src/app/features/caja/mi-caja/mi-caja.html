@@ -1,0 +1,109 @@
+<!-- header-->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+
+    <p-card>
+        <ng-template #header>
+            <div class="flex items-center justify-between p-4 pb-0">
+                <h1 class="m-0" style="font-size: 1.5rem; font-weight: 600;">Mi Caja</h1>
+                <p-tag *ngIf="!cargando" [value]="cajaAbierta ? 'Abierta' : 'Cerrada'"
+                    [severity]="cajaAbierta ? 'success' : 'secondary'" />
+            </div>
+        </ng-template>
+
+        <ng-template #content>
+            <div *ngIf="cargando" class="text-center p-6">
+                <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+                <p class="mt-2">Consultando estado de la caja...</p>
+            </div>
+
+            <!-- Estado vacío: sin caja abierta -->
+            <div *ngIf="!cargando && !cajaAbierta" class="text-center p-6">
+                <i class="pi pi-inbox" style="font-size: 3rem; color: var(--p-text-muted-color);"></i>
+                <p class="mt-3 mb-4 text-lg">No tienes una caja abierta en este momento.</p>
+                <p-button label="Abrir Caja" icon="pi pi-lock-open" severity="success" (click)="abrirCaja()" />
+            </div>
+
+            <!-- Caja abierta: resumen y acciones -->
+            <div *ngIf="!cargando && cajaAbierta" class="flex flex-col gap-6">
+                <div class="flex items-center gap-6 text-sm text-gray-600 flex-wrap">
+                    <span class="flex items-center gap-2">
+                        <i class="pi pi-user"></i>
+                        {{ cajaAbierta.nombreCajero || 'Cajero no registrado' }}
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <i class="pi pi-calendar"></i>
+                        {{ cajaAbierta.fecha }}
+                    </span>
+                </div>
+
+                <div *ngIf="resumen" class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-gray-50 rounded text-center">
+                        <div class="text-sm text-gray-600">Total Cobrado por Mí Hoy</div>
+                        <div class="text-2xl font-bold text-green-600">{{ formatCurrency(resumen.totalCobrado) }}</div>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded text-center">
+                        <div class="text-sm text-gray-600">Total Pendiente (Cooperativa)</div>
+                        <div class="text-2xl font-bold text-orange-600">{{ formatCurrency(resumen.totalPendiente) }}</div>
+                    </div>
+                </div>
+
+                <!-- Caja abierta de un día anterior sin cuadrar: el backend rechaza pago/depósito/retiro hasta cerrarla -->
+                <p-message *ngIf="cajaDeFechaAnterior" severity="warn" [closable]="false" styleClass="w-full">
+                    <div class="flex items-start gap-3 p-2">
+                        <i class="pi pi-exclamation-triangle mt-1" style="font-size: 1.25rem"></i>
+                        <div class="text-sm">
+                            <strong>Tienes una caja abierta del {{ cajaAbierta.fecha }} sin cerrar.</strong>
+                            <p class="m-0 mt-1">Debes cuadrarla antes de registrar pagos, depósitos o retiros. Usa el
+                                botón "Cerrar Caja" para cuadrarla ahora.</p>
+                        </div>
+                    </div>
+                </p-message>
+
+                <div class="flex gap-3 flex-wrap">
+                    <p-button label="Registrar Pago" icon="pi pi-money-bill" [disabled]="cajaDeFechaAnterior"
+                        pTooltip="Debes cerrar tu caja anterior antes de continuar"
+                        [tooltipDisabled]="!cajaDeFechaAnterior" (click)="irARegistrarPago()" />
+                    <p-button label="Depósito / Retiro" icon="pi pi-wallet" [disabled]="cajaDeFechaAnterior"
+                        pTooltip="Debes cerrar tu caja anterior antes de continuar"
+                        [tooltipDisabled]="!cajaDeFechaAnterior" (click)="irADepositoRetiro()" />
+                    <p-button label="Cerrar Caja" icon="pi pi-lock" severity="danger" (click)="abrirDialogoCierre()" />
+                </div>
+
+                <div>
+                    <h3 class="font-bold mb-3">Movimientos de Hoy</h3>
+
+                    <!-- Estado vacío: sin movimientos todavía, no una tabla en blanco -->
+                    <div *ngIf="movimientosHoy.length === 0"
+                        class="text-center p-4 bg-gray-50 rounded text-sm text-gray-600">
+                        Aún no has registrado movimientos hoy.
+                    </div>
+
+                    <p-table *ngIf="movimientosHoy.length > 0" [value]="movimientosHoy"
+                        [tableStyle]="{ 'min-width': '40rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Monto</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-movimiento>
+                            <tr>
+                                <td>{{ formatHora(movimiento.hora) }}</td>
+                                <td>{{ movimiento.nombreCliente || '-' }}</td>
+                                <td><p-tag [value]="movimiento.tipo" [severity]="getSeverityTipo(movimiento.tipo)" /></td>
+                                <td>{{ formatCurrency(movimiento.monto) }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+        </ng-template>
+    </p-card>
+
+    <app-cerrar-caja-dialog (cerrado)="onCajaCerrada()" />
+    <p-confirmDialog [style]="{ width: '450px' }" />
+</div>

@@ -1,0 +1,349 @@
+<!-- header-->
+<app-header></app-header>
+
+<div class="card">
+    <p-toast />
+
+    <!-- Breadcrumb: vuelve a la tabla desde la que se llegó al hub (?origen=...), o a Clientes por defecto -->
+    <div class="mb-4">
+        <p-button [label]="'Volver a ' + origenLabel" icon="pi pi-arrow-left" text (click)="volver()" />
+    </div>
+
+    <!-- Estado de carga inicial del cliente -->
+    <div *ngIf="cargandoCliente" class="p-4 text-center text-gray-500">
+        Cargando información del cliente...
+    </div>
+
+    <ng-container *ngIf="!cargandoCliente && cliente">
+        <!-- Header del hub -->
+        <div class="cliente-hub-header mb-6">
+            <div class="cliente-hub-header-info">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h1 class="m-0" style="font-size: 1.6rem; font-weight: 600;">{{ nombreCompleto() }}</h1>
+                    <!-- Cartera vencida: lo primero que se ve al entrar a la ficha, si aplica -->
+                    <p-tag *ngIf="clienteEnMora" severity="danger" icon="pi pi-exclamation-triangle"
+                        [value]="clienteEnMora.cantidadCuotasAtrasadas + ' cuota(s) atrasada(s) — ' + clienteEnMora.diasAtrasoMasAntiguo + ' día(s) de atraso'" />
+                </div>
+                <div class="flex items-center gap-3 mt-2">
+                    <span class="text-gray-600">Cédula: {{ cliente.cedula }}</span>
+                    <p-tag [value]="cliente.estado" [severity]="getSeverityCliente(cliente.estado)" />
+                    <p-tag [value]="getTipoSocioLabel(cliente.tipoSocio)" [severity]="getSeverityTipoSocio(cliente.tipoSocio)" />
+                </div>
+            </div>
+
+            <div class="cliente-hub-header-acciones">
+                <p-button label="Nueva cuenta" icon="pi pi-wallet" class="mr-2" (onClick)="nuevaCuenta()" />
+                <p-button label="Nuevo préstamo" icon="pi pi-money-bill" severity="info" class="mr-2"
+                    (onClick)="nuevoPrestamo()" />
+                <p-button label="Registrar pago" icon="pi pi-check-circle" severity="success"
+                    [disabled]="prestamosActivosDelCliente.length === 0"
+                    [pTooltip]="prestamosActivosDelCliente.length === 0 ? 'Este cliente no tiene préstamos activos (aprobados o desembolsados)' : ''"
+                    tooltipPosition="top"
+                    (onClick)="registrarPago()" />
+            </div>
+        </div>
+
+        <p-tabs value="0">
+            <p-tablist>
+                <p-tab value="0">Info</p-tab>
+                <p-tab value="1">Cuentas</p-tab>
+                <p-tab value="2">Préstamos</p-tab>
+                <p-tab value="3">Pagos</p-tab>
+                <p-tab value="4">Transacciones</p-tab>
+            </p-tablist>
+
+            <p-tabpanels>
+                <!-- ===== Pestaña Info ===== -->
+                <p-tabpanel value="0">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="m-0" style="font-size: 1.2rem; font-weight: 500;">Datos Personales</h2>
+                        <p-button *ngIf="!editandoInfo" label="Editar" icon="pi pi-pencil" text
+                            (click)="editarInfo()" />
+                    </div>
+
+                    <!-- Modo lectura -->
+                    <div *ngIf="!editandoInfo" class="grid grid-cols-12 gap-4">
+                        <div class="col-span-6"><strong>Cédula:</strong> {{ cliente.cedula }}</div>
+                        <div class="col-span-6"><strong>Teléfono:</strong> {{ cliente.telefono }}</div>
+                        <div class="col-span-6"><strong>Nombres:</strong> {{ cliente.nombres }}</div>
+                        <div class="col-span-6"><strong>Apellidos:</strong> {{ cliente.apellidos }}</div>
+                        <div class="col-span-6"><strong>Email:</strong> {{ cliente.email || '-' }}</div>
+                        <div class="col-span-6"><strong>Dirección:</strong> {{ cliente.direccion || '-' }}</div>
+                        <div class="col-span-6"><strong>Fecha de Nacimiento:</strong> {{ formatDate(cliente.fechaNacimiento) }}</div>
+                        <div class="col-span-6"><strong>Fecha de Registro:</strong> {{ formatDate(cliente.fechaRegistro) }}</div>
+                    </div>
+
+                    <!-- Modo edición: mismos campos y validaciones que la tabla de Clientes -->
+                    <div *ngIf="editandoInfo" class="flex flex-col gap-6">
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-6">
+                                <label for="cedula" class="block font-bold mb-3">Cédula *</label>
+                                <input type="text" pInputText id="cedula" [(ngModel)]="infoForm.cedula" fluid
+                                    disabled />
+                            </div>
+                            <div class="col-span-6">
+                                <label for="telefono" class="block font-bold mb-3">Teléfono *</label>
+                                <input type="text" pInputText id="telefono" [(ngModel)]="infoForm.telefono" fluid
+                                    (keypress)="soloNumeros($event)" maxlength="15" />
+                                <small class="text-red-500" *ngIf="submittedInfo && !infoForm.telefono">El teléfono es requerido.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-6">
+                                <label for="nombres" class="block font-bold mb-3">Nombres *</label>
+                                <input type="text" pInputText id="nombres" [(ngModel)]="infoForm.nombres" fluid
+                                    (keypress)="soloLetras($event)" />
+                                <small class="text-red-500" *ngIf="submittedInfo && !infoForm.nombres">Los nombres son requeridos.</small>
+                            </div>
+                            <div class="col-span-6">
+                                <label for="apellidos" class="block font-bold mb-3">Apellidos *</label>
+                                <input type="text" pInputText id="apellidos" [(ngModel)]="infoForm.apellidos" fluid
+                                    (keypress)="soloLetras($event)" />
+                                <small class="text-red-500" *ngIf="submittedInfo && !infoForm.apellidos">Los apellidos son requeridos.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-6">
+                                <label for="email" class="block font-bold mb-3">Email</label>
+                                <input type="email" pInputText id="email" [(ngModel)]="infoForm.email" fluid />
+                            </div>
+                            <div class="col-span-6">
+                                <label for="direccion" class="block font-bold mb-3">Dirección</label>
+                                <input type="text" pInputText id="direccion" [(ngModel)]="infoForm.direccion" fluid />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-6">
+                                <label for="fechaNacimiento" class="block font-bold mb-3">Fecha de Nacimiento</label>
+                                <input type="date" pInputText id="fechaNacimiento"
+                                    [(ngModel)]="infoForm.fechaNacimiento" fluid />
+                                <small class="text-red-500" *ngIf="submittedInfo && !infoForm.fechaNacimiento">La fecha de nacimiento es requerida.</small>
+                            </div>
+                            <div class="col-span-6">
+                                <label for="estado" class="block font-bold mb-3">Estado</label>
+                                <p-select [options]="estados" [(ngModel)]="selectedEstado" optionLabel="label"
+                                    optionValue="value" placeholder="Seleccione un estado" class="w-full" />
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <p-button label="Cancelar" icon="pi pi-times" text (click)="cancelarEdicionInfo()" />
+                            <p-button label="Guardar" icon="pi pi-check" (click)="guardarInfo()" />
+                        </div>
+                    </div>
+                </p-tabpanel>
+
+                <!-- ===== Pestaña Cuentas ===== -->
+                <p-tabpanel value="1">
+                    <div *ngIf="cargandoCuentas" class="p-4 text-center text-gray-500">Cargando cuentas...</div>
+                    <p-table *ngIf="!cargandoCuentas" [value]="cuentas" [tableStyle]="{ 'min-width': '50rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Número de Cuenta</th>
+                                <th>Tipo</th>
+                                <th>Saldo Actual</th>
+                                <th>Tasa de Interés</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-cuenta>
+                            <tr>
+                                <td>{{ cuenta.numeroCuenta }}</td>
+                                <td>{{ cuenta.tipoCuenta }}</td>
+                                <td>{{ formatCurrency(cuenta.saldoActual) }}</td>
+                                <td>{{ cuenta.tasaInteres }}%</td>
+                                <td><p-tag [value]="cuenta.estado" [severity]="getSeverityCliente(cuenta.estado)" /></td>
+                                <td>
+                                    <p-button icon="pi pi-list" [rounded]="true" [outlined]="true"
+                                        pTooltip="Ver movimientos" (click)="verMovimientos(cuenta)" />
+                                </td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr><td colspan="6" class="text-center p-4">Este cliente no tiene cuentas registradas</td></tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ===== Pestaña Préstamos ===== -->
+                <p-tabpanel value="2">
+                    <div *ngIf="cargandoPrestamos" class="p-4 text-center text-gray-500">Cargando préstamos...</div>
+                    <p-table *ngIf="!cargandoPrestamos" [value]="prestamos" [tableStyle]="{ 'min-width': '50rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Número de Cuenta</th>
+                                <th>Monto Solicitado</th>
+                                <th>Monto Aprobado</th>
+                                <th>Cuota Mensual</th>
+                                <th>Saldo Pendiente</th>
+                                <th>Estado</th>
+                                <th>Fecha Solicitud</th>
+                                <th></th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-prestamo>
+                            <tr>
+                                <td>{{ prestamo.numeroCuentaPrestamo || 'N/A' }}</td>
+                                <td>{{ formatCurrency(prestamo.montoSolicitado) }}</td>
+                                <td>{{ formatCurrency(prestamo.montoAprobado) }}</td>
+                                <td>{{ formatCurrency(prestamo.cuotaMensual) }}</td>
+                                <td>{{ formatCurrency(prestamo.saldoPendiente) }}</td>
+                                <td><p-tag [value]="prestamo.estado" [severity]="getSeverityPrestamo(prestamo.estado)" /></td>
+                                <td>{{ formatDate(prestamo.fechaSolicitud) }}</td>
+                                <td>
+                                    <p-button icon="pi pi-list" [rounded]="true" [outlined]="true"
+                                        pTooltip="Ver tabla de amortización" (click)="verAmortizacion(prestamo)" />
+                                </td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr><td colspan="8" class="text-center p-4">Este cliente no tiene préstamos registrados</td></tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ===== Pestaña Pagos ===== -->
+                <p-tabpanel value="3">
+                    <div *ngIf="cargandoPagos" class="p-4 text-center text-gray-500">Cargando pagos...</div>
+                    <p-table *ngIf="!cargandoPagos" [value]="pagos" [tableStyle]="{ 'min-width': '50rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Número de Cuenta</th>
+                                <th>Cuota</th>
+                                <th>Monto Pagado</th>
+                                <th>Mora</th>
+                                <th>Método de Pago</th>
+                                <th>Fecha de Pago</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-pago>
+                            <tr>
+                                <td>{{ pago.numeroCuentaPrestamo || 'N/A' }}</td>
+                                <td>#{{ pago.numeroCuotaPagada }}</td>
+                                <td>{{ formatCurrency(pago.montoPagado) }}</td>
+                                <td>{{ formatCurrency(pago.mora) }}</td>
+                                <td>{{ getMetodoPagoLabel(pago.metodoPago) }}</td>
+                                <td>{{ formatDate(pago.fechaPago) }}</td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr><td colspan="6" class="text-center p-4">Este cliente no tiene pagos registrados</td></tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+
+                <!-- ===== Pestaña Transacciones ===== -->
+                <p-tabpanel value="4">
+                    <div *ngIf="cargandoTransacciones" class="p-4 text-center text-gray-500">Cargando transacciones...</div>
+                    <p-table *ngIf="!cargandoTransacciones" [value]="transacciones" [tableStyle]="{ 'min-width': '50rem' }">
+                        <ng-template #header>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th>Saldo Anterior</th>
+                                <th>Saldo Nuevo</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template #body let-transaccion>
+                            <tr>
+                                <td>{{ formatDate(transaccion.fechaTransaccion) }}</td>
+                                <td><p-tag [value]="transaccion.tipoTransaccion" [severity]="getSeverityTransaccion(transaccion.tipoTransaccion)" /></td>
+                                <td>{{ transaccion.descripcion }}</td>
+                                <td>{{ formatCurrency(transaccion.monto) }}</td>
+                                <td>{{ formatCurrency(transaccion.saldoAnterior) }}</td>
+                                <td>{{ formatCurrency(transaccion.saldoNuevo) }}</td>
+                            </tr>
+                        </ng-template>
+                        <ng-template #emptymessage>
+                            <tr><td colspan="6" class="text-center p-4">Este cliente no tiene transacciones registradas</td></tr>
+                        </ng-template>
+                    </p-table>
+                </p-tabpanel>
+            </p-tabpanels>
+        </p-tabs>
+    </ng-container>
+
+    <!-- Diálogos reutilizados de Cuentas y Prestamos, con el cliente preseleccionado -->
+    <app-cuenta-form-dialog (guardado)="onCuentaGuardada()" />
+    <app-prestamo-form-dialog (guardado)="onPrestamoGuardado()" />
+    <app-pago-form-dialog (guardado)="onPagoGuardado()" />
+
+    <!-- Selector rápido: solo aparece si el cliente tiene más de un préstamo activo -->
+    <p-dialog [(visible)]="seleccionPrestamoDialog" [style]="{ width: '450px' }"
+        header="¿A cuál préstamo corresponde el pago?" [modal]="true">
+        <ng-template #content>
+            <div class="flex flex-col gap-2">
+                <button type="button" *ngFor="let prestamo of prestamosActivosDelCliente" class="prestamo-opcion"
+                    (click)="elegirPrestamoParaPago(prestamo)">
+                    <strong>{{ prestamo.numeroCuentaPrestamo || ('Préstamo #' + prestamo.idPrestamo) }}</strong>
+                    <span>Saldo pendiente: {{ formatCurrency(prestamo.saldoPendiente) }}</span>
+                </button>
+            </div>
+        </ng-template>
+        <ng-template #footer>
+            <p-button label="Cancelar" icon="pi pi-times" text (click)="seleccionPrestamoDialog = false" />
+        </ng-template>
+    </p-dialog>
+
+    <!-- Tabla de amortización de un préstamo, sin salir de la ficha del cliente -->
+    <p-dialog [(visible)]="amortizacionDialog" [style]="{ width: '900px' }" header="Tabla de Amortización"
+        [modal]="true" (onHide)="hideAmortizacionDialog()">
+        <ng-template #content>
+            <div *ngIf="prestamoSeleccionadoAmortizacion" class="mb-4 text-sm text-gray-600">
+                Préstamo {{ prestamoSeleccionadoAmortizacion.numeroCuentaPrestamo || ('#' + prestamoSeleccionadoAmortizacion.idPrestamo) }}
+            </div>
+
+            <!-- Un préstamo SOLICITADO (sin aprobar) todavía no tiene tabla de amortización generada en el backend -->
+            <p-message *ngIf="prestamoSeleccionadoAmortizacion?.estado === 'SOLICITADO'" severity="info"
+                [closable]="false" styleClass="w-full">
+                Este préstamo aún no ha sido aprobado, no tiene tabla de amortización.
+            </p-message>
+
+            <div *ngIf="prestamoSeleccionadoAmortizacion?.estado !== 'SOLICITADO'">
+                <div *ngIf="cargandoAmortizacion" class="p-4 text-center text-gray-500">Cargando tabla de amortización...</div>
+
+                <p-table *ngIf="!cargandoAmortizacion" [value]="tablaAmortizacion" [tableStyle]="{ 'min-width': '50rem' }">
+                    <ng-template #header>
+                        <tr>
+                            <th>Cuota</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Capital</th>
+                            <th>Interés</th>
+                            <th>Monto Cuota</th>
+                            <th>Saldo Restante</th>
+                            <th>Estado</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template #body let-cuota>
+                        <tr>
+                            <td>{{ cuota.numeroCuota }}</td>
+                            <td>{{ formatDate(cuota.fechaVencimiento) }}</td>
+                            <td>{{ formatCurrency(cuota.capital) }}</td>
+                            <td>{{ formatCurrency(cuota.interes) }}</td>
+                            <td>{{ formatCurrency(cuota.montoCuota) }}</td>
+                            <td>{{ formatCurrency(cuota.saldoRestante) }}</td>
+                            <td>
+                                <p-tag [value]="cuota.estadoPago" [severity]="getSeverityCuota(cuota)" />
+                            </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template #emptymessage>
+                        <tr><td colspan="7" class="text-center p-4">Este préstamo no tiene cuotas registradas</td></tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </ng-template>
+
+        <ng-template #footer>
+            <p-button label="Cerrar" icon="pi pi-times" (click)="hideAmortizacionDialog()" />
+        </ng-template>
+    </p-dialog>
+
+    <p-confirmDialog [style]="{ width: '450px' }" />
+</div>

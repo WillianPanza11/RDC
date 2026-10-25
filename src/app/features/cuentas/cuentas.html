@@ -89,7 +89,12 @@
                         (click)="transaccionesRealizadas(cuenta.idCuenta)" />
                 </td>
                 <td>{{ cuenta.numeroCuenta }}</td>
-                <td>{{ cuenta.nombreCliente }}</td>
+                <td>
+                    <button type="button" class="cliente-link" pTooltip="Ver cliente" tooltipPosition="top"
+                        (click)="verCliente(cuenta)">
+                        {{ cuenta.nombreCliente }}
+                    </button>
+                </td>
                 <td>{{ cuenta.tipoCuenta }}</td>
                 <td>{{ cuenta.saldoActual | number:'1.2-2' }}</td>
                 <td>{{ cuenta.tasaInteres }}%</td>
@@ -109,89 +114,7 @@
         </ng-template>
     </p-table>
 
-    <p-dialog [(visible)]="cuentaDialog" [style]="{ width: '550px' }" header="Detalles de la Cuenta" [modal]="true">
-        <ng-template #content>
-            <div class="flex flex-col gap-6">
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12">
-                        <label for="idCliente" class="block font-bold mb-3">Cliente *</label>
-                        <p-select [options]="clientes" [(ngModel)]="cuenta.idCliente" optionLabel="cedula"
-                            optionValue="idCliente" placeholder="Seleccione un cliente" class="w-full"
-                            [disabled]="cuentaId ? true : false"
-                            [filter]="true"
-                            filterBy="cedula,nombres,apellidos"
-                            [showClear]="true"
-                            [virtualScroll]="clientes.length > 100"
-                            [virtualScrollItemSize]="38">
-                            <ng-template let-cliente pTemplate="item">
-                                <div>{{ cliente.nombres }} {{ cliente.apellidos }} - {{ cliente.cedula }}</div>
-                            </ng-template>
-                            <ng-template pTemplate="selectedItem">
-                                <div *ngIf="cuenta.idCliente">{{ getClienteNombre(cuenta.idCliente) }}</div>
-                            </ng-template>
-                        </p-select>
-                        <small class="text-red-500" *ngIf="submitted && (!cuenta.idCliente || cuenta.idCliente === 0)">El cliente es requerido.</small>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-12 gap-4">
-                    <!--<div class="col-span-6">
-                        <label for="numeroCuenta" class="block font-bold mb-3">Número de Cuenta *</label>
-                        <input type="text" pInputText id="numeroCuenta" [(ngModel)]="cuenta.numeroCuenta" required autofocus fluid
-                            [disabled]="cuentaId ? true : false" 
-                            (keypress)="soloNumeros($event)" 
-                            (input)="limpiarSoloNumeros($event)" />
-                        <small class="text-red-500" *ngIf="submitted && !cuenta.numeroCuenta">El número de cuenta es requerido.</small>
-                    </div>-->
-                    <br>
-                    <div class="col-span-6">
-                        <label for="tipoCuenta" class="block font-bold mb-3">Tipo de Cuenta *</label>
-                        <p-select [options]="tiposCuenta" [(ngModel)]="cuenta.tipoCuenta" optionLabel="label"
-                            optionValue="value" placeholder="Seleccione un tipo" class="w-full" />
-                        <small class="text-red-500" *ngIf="submitted && !cuenta.tipoCuenta">El tipo de cuenta es requerido.</small>
-                    </div>
-                </div>
-
-                <br>
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-6">
-                        <label for="saldoActual" class="block font-bold mb-3">Saldo Actual *</label>
-                        <input type="number" pInputText id="saldoActual" [(ngModel)]="cuenta.saldoActual" required fluid 
-                            (keypress)="soloNumerosConDecimales($event)" 
-                            (input)="limpiarSoloNumeros($event)"
-                            min="0" step="0.01" />
-                        <small class="text-red-500" *ngIf="submitted && (cuenta.saldoActual === undefined || cuenta.saldoActual < 0)">El saldo actual es requerido y debe ser mayor o igual a 0.</small>
-                    </div>
-
-                    <br>
-                    <div class="col-span-6">
-                        <label for="tasaInteres" class="block font-bold mb-3">Tasa de Interés (%)</label>
-                        <input type="number" pInputText id="tasaInteres" [(ngModel)]="cuenta.tasaInteres" fluid 
-                            (keypress)="soloNumerosConDecimales($event)" 
-                            (input)="limpiarSoloNumeros($event)"
-                            min="0" step="0.01" />
-                    </div>
-                </div>
-
-                <br>
-                <!--Mostrar campo estado solo cuando se va a editar-->
-                @if (cuentaId){
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-12">
-                        <label for="estado" class="block font-bold mb-3">Estado</label>
-                        <p-select [options]="estados" [(ngModel)]="selectedEstado" optionLabel="label"
-                            optionValue="value" placeholder="Seleccione un estado" class="w-full" />
-                    </div>
-                </div>
-                }
-            </div>
-        </ng-template>
-
-        <ng-template #footer>
-            <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
-            <p-button label="Guardar" icon="pi pi-check" (click)="saveCuenta()" />
-        </ng-template>
-    </p-dialog>
+    <app-cuenta-form-dialog (guardado)="loadCuentas()" />
 
     <!-- Diálogo de Transacciones -->
     <p-dialog [(visible)]="transaccionDialog" [style]="{ width: '550px' }" header="Generar Transacción" [modal]="true">
@@ -212,8 +135,9 @@
                 <div class="grid grid-cols-12 gap-4">
                     <div class="col-span-12">
                         <label for="tipoTransaccion" class="block font-bold mb-3">Tipo de Transacción *</label>
-                        <p-select [options]="tiposTransaccion" [(ngModel)]="transaccion.tipoTransaccion" 
-                            optionLabel="label" optionValue="value" placeholder="Seleccione un tipo" class="w-full" />
+                        <p-select [options]="tiposTransaccion" [(ngModel)]="transaccion.tipoTransaccion"
+                            optionLabel="label" optionValue="value" placeholder="Seleccione un tipo" class="w-full"
+                            appendTo="body" />
                         <small class="text-red-500" *ngIf="transaccionSubmitted && !transaccion.tipoTransaccion">
                             El tipo de transacción es requerido.
                         </small>
@@ -239,8 +163,9 @@
                     <br>    
                     <div class="col-span-6">
                         <label for="metodoPago" class="block font-bold mb-3">Método de Pago</label>
-                        <p-select [options]="metodosPago" [(ngModel)]="transaccion.metodoPago" 
-                            optionLabel="label" optionValue="value" placeholder="Seleccione un método" class="w-full" />
+                        <p-select [options]="metodosPago" [(ngModel)]="transaccion.metodoPago"
+                            optionLabel="label" optionValue="value" placeholder="Seleccione un método" class="w-full"
+                            appendTo="body" />
                     </div>
                 </div>
 

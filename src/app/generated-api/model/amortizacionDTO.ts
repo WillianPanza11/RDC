@@ -17,6 +17,13 @@ export interface AmortizacionDTO {
     capital?: number;
     interes?: number;
     saldoRestante?: number;
-    estadoPago?: string;
+    estadoPago?: AmortizacionDTO.EstadoPagoEnum;
     fechaPago?: string;
+}
+export namespace AmortizacionDTO {
+    export type EstadoPagoEnum = 'PENDIENTE' | 'PAGADA';
+    export const EstadoPagoEnum = {
+        PENDIENTE: 'PENDIENTE' as EstadoPagoEnum,
+        PAGADA: 'PAGADA' as EstadoPagoEnum
+    };
 }

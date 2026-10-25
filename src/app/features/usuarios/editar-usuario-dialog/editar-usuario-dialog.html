@@ -1,0 +1,46 @@
+<p-dialog [(visible)]="visible" [style]="{ width: '550px' }" header="Editar Usuario" [modal]="true">
+    <ng-template #content>
+        <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12">
+                <label for="usernameSoloLectura" class="block font-bold mb-3">Usuario</label>
+                <input type="text" pInputText id="usernameSoloLectura" [value]="usernameSoloLectura" disabled
+                    fluid />
+            </div>
+
+            <div class="col-span-12">
+                <label for="nombreCompleto" class="block font-bold mb-3">Nombre Completo *</label>
+                <input type="text" pInputText id="nombreCompleto" [(ngModel)]="usuario.nombreCompleto" fluid />
+                <small class="text-red-500" *ngIf="submitted && !usuario.nombreCompleto">El nombre completo es
+                    requerido.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="cedula" class="block font-bold mb-3">Cédula *</label>
+                <input type="text" pInputText id="cedula" [(ngModel)]="usuario.cedula" fluid
+                    (keypress)="soloNumeros($event)" (input)="limpiarSoloNumeros($event)" maxlength="10" />
+                <small class="text-red-500" *ngIf="submitted && !usuario.cedula">La cédula es requerida.</small>
+                <small class="text-red-500" *ngIf="submitted && usuario.cedula && !ValidarCedulaValida(usuario.cedula)">La
+                    cédula debe tener 10 dígitos.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="email" class="block font-bold mb-3">Email</label>
+                <input type="email" pInputText id="email" [(ngModel)]="usuario.email" fluid />
+                <small class="text-red-500" *ngIf="submitted && usuario.email && !emailValido()">El email no es
+                    válido.</small>
+            </div>
+
+            <div class="col-span-12">
+                <label for="rol" class="block font-bold mb-3">Rol *</label>
+                <p-select [options]="rolesOptions" [(ngModel)]="rolSeleccionado" optionLabel="label"
+                    optionValue="value" placeholder="Seleccione un rol" class="w-full" appendTo="body" />
+                <small class="text-red-500" *ngIf="submitted && !rolSeleccionado">Debe seleccionar un rol.</small>
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template #footer>
+        <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+        <p-button label="Guardar" icon="pi pi-check" [loading]="guardando" (click)="guardar()" />
+    </ng-template>
+</p-dialog>

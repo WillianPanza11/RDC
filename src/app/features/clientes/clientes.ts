@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
 import { ToolbarModule } from 'primeng/toolbar';
@@ -17,11 +18,14 @@ import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { TooltipModule } from 'primeng/tooltip';
 import { ClienteControllerService } from '../../generated-api/api/clienteController.service';
 import { ClienteRequestDTO } from '../../generated-api/model/clienteRequestDTO';
 import { ClienteResponseDTO } from '../../generated-api/model/clienteResponseDTO';
+import { ClienteEnMoraDTO } from '../../generated-api/model/clienteEnMoraDTO';
 import { firstValueFrom } from 'rxjs';
 import { ValidationService } from '../../core/services/validation.service';
+import { AuthService } from '../../core/services/auth.service';
 
 
 interface Column {
@@ -34,7 +38,7 @@ interface Column {
   selector: 'app-clientes',
   imports: [Toast, ToolbarModule, TableModule, ButtonModule, DialogModule, IconFieldModule,
     SelectModule, InputIconModule, Tag, ConfirmDialog, FormsModule,
-    CommonModule, MessageModule, ConfirmDialogModule, Header, InputTextModule,],
+    CommonModule, MessageModule, ConfirmDialogModule, Header, InputTextModule, TooltipModule,],
   providers: [MessageService, ConfirmationService, ClienteControllerService],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
@@ -54,18 +58,44 @@ export class Clientes implements OnInit {
   //Seleccion de estado
   estados: any[] = [];
   selectedEstado: string | undefined;
-  estadoOriginal: string | undefined; 
+  estadoOriginal: string | undefined;
 
+  // Cambio de tipo de socio (solo ROLE_ADMIN, ver requisito 5)
+  tipoSocioDialog: boolean = false;
+  clienteTipoSocio?: ClienteResponseDTO;
+  nuevoTipoSocio?: ClienteResponseDTO.TipoSocioEnum;
+  tiposSocio = [
+    { label: 'Mayorista', value: 'MAYORISTA' as ClienteResponseDTO.TipoSocioEnum },
+    { label: 'Minorista', value: 'MINORISTA' as ClienteResponseDTO.TipoSocioEnum }
+  ];
+
+  // Filtro rápido de la columna "Tipo de Socio" (filtro nativo de p-table, ver onFiltroTipoSocioChange)
+  filtroTipoSocio: ClienteResponseDTO.TipoSocioEnum | undefined;
+  filtroTipoSocioOptions: { label: string; value: ClienteResponseDTO.TipoSocioEnum | undefined }[] = [
+    { label: 'Todos', value: undefined },
+    { label: 'Mayoristas', value: 'MAYORISTA' as ClienteResponseDTO.TipoSocioEnum },
+    { label: 'Minoristas', value: 'MINORISTA' as ClienteResponseDTO.TipoSocioEnum }
+  ];
+
+  // Cupo máximo de mayoristas que puede tener la cooperativa
+  readonly CUPO_MAYORISTAS = 25;
+
+  // Cartera vencida: se carga una sola vez al entrar a la pantalla y se cruza por idCliente
+  // contra la tabla de clientes (nada de una llamada por fila).
+  clientesEnMora: Map<number, ClienteEnMoraDTO> = new Map();
 
   constructor(
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
     private clienteService: ClienteControllerService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private router: Router,
+    protected authService: AuthService
   ) {
     // Ejecutar loadClientes solo en el navegador (después de la hidratación SSR)
     afterNextRender(() => {
       this.loadClientes();
+      this.loadClientesEnMora();
     });
   }
 
@@ -91,14 +121,33 @@ export class Clientes implements OnInit {
       { field: 'apellidos', header: 'Apellidos' },
       { field: 'email', header: 'Email' },
       { field: 'telefono', header: 'Teléfono' },
-      { field: 'estado', header: 'Estado' }
+      { field: 'estado', header: 'Estado' },
+      { field: 'tipoSocio', header: 'Tipo de Socio' }
     ];
+  }
+
+  /** Cuenta los mayoristas sobre la misma lista ya cargada en loadClientes() (clientes ACTIVOS); no requiere un endpoint nuevo. */
+  get cantidadMayoristas(): number {
+    return this.clientes.filter(c => c.tipoSocio === 'MAYORISTA').length;
+  }
+
+  /** Filtro nativo de p-table sobre la columna Tipo de Socio; con "Todos" (value undefined) el matchMode 'equals' no filtra nada. */
+  onFiltroTipoSocioChange(): void {
+    this.dt.filter(this.filtroTipoSocio, 'tipoSocio', 'equals');
+  }
+
+  getTipoSocioLabel(tipoSocio?: string): string {
+    return tipoSocio === 'MAYORISTA' ? 'Mayorista' : 'Minorista';
+  }
+
+  getSeverityTipoSocio(tipoSocio?: string): 'warn' | 'secondary' {
+    return tipoSocio === 'MAYORISTA' ? 'warn' : 'secondary';
   }
 
   loadClientes(): void {
     this.clienteService.obtenerClientesPorEstado('ACTIVO').subscribe({
       next: (data) => {
-        this.clientes = data;
+        this.clientes = this.ordenarPorRecientes(data);
         console.log(this.clientes);
       },
       error: (error) => {
@@ -108,6 +157,36 @@ export class Clientes implements OnInit {
     });
   }
 
+  /**
+   * Cliente no tiene un campo "fechaActualizacion" en el DTO (solo fechaRegistro,
+   * que no cambia al editar), así que se usa idCliente descendente: el más alto
+   * es el más reciente. Esto sube los clientes recién creados al tope; un cliente
+   * editado (sin cambiar) se queda en su posición por id.
+   */
+  private ordenarPorRecientes(clientes: ClienteResponseDTO[]): ClienteResponseDTO[] {
+    return [...clientes].sort((a, b) => (b.idCliente ?? 0) - (a.idCliente ?? 0));
+  }
+
+  /** Carga la cartera vencida una sola vez (no por fila) para poder marcar en la tabla quién está en mora. */
+  loadClientesEnMora(): void {
+    this.clienteService.obtenerClientesEnMora().subscribe({
+      next: (data) => {
+        this.clientesEnMora = new Map(
+          data.filter(c => c.idCliente !== undefined).map(c => [c.idCliente!, c])
+        );
+      },
+      error: (error) => {
+        // No es bloqueante para la pantalla de Clientes: si falla, simplemente no se muestra la alerta.
+        console.error('Error loading clientes en mora:', error);
+      }
+    });
+  }
+
+  /** Devuelve los datos de mora del cliente si está en la cartera vencida, o undefined si está al día. */
+  obtenerMora(cliente: ClienteResponseDTO): ClienteEnMoraDTO | undefined {
+    return cliente.idCliente ? this.clientesEnMora.get(cliente.idCliente) : undefined;
+  }
+
   openNew(): void {
     this.cliente = this.getEmptyCliente();
     this.clienteId = undefined;
@@ -115,6 +194,12 @@ export class Clientes implements OnInit {
     this.estadoOriginal = undefined;
     this.submitted = false;
     this.clienteDialog = true;
+  }
+
+  verDetalle(cliente: ClienteResponseDTO): void {
+    if (cliente.idCliente) {
+      this.router.navigate(['/clientes', cliente.idCliente], { queryParams: { origen: 'clientes' } });
+    }
   }
 
   editCliente(cliente: ClienteResponseDTO): void {
@@ -139,6 +224,41 @@ export class Clientes implements OnInit {
     this.submitted = false;
     this.selectedEstado = undefined;
     this.estadoOriginal = undefined;
+  }
+
+  /** Control de cambio de tipo de socio: diálogo independiente del de edición, solo para ROLE_ADMIN. */
+  abrirCambioTipoSocio(cliente: ClienteResponseDTO): void {
+    this.clienteTipoSocio = cliente;
+    this.nuevoTipoSocio = cliente.tipoSocio;
+    this.tipoSocioDialog = true;
+  }
+
+  hideTipoSocioDialog(): void {
+    this.tipoSocioDialog = false;
+    this.clienteTipoSocio = undefined;
+    this.nuevoTipoSocio = undefined;
+  }
+
+  guardarTipoSocio(): void {
+    if (!this.clienteTipoSocio?.idCliente || !this.nuevoTipoSocio) {
+      this.enviarMensajeAdvertencia('Debe seleccionar un tipo de socio');
+      return;
+    }
+
+    this.clienteService.cambiarTipoSocio({ tipoSocio: this.nuevoTipoSocio }, this.clienteTipoSocio.idCliente).subscribe({
+      next: (response) => {
+        const index = this.clientes.findIndex(c => c.idCliente === response.idCliente);
+        if (index !== -1) {
+          this.clientes[index] = response;
+        }
+        this.enviarMensajeExito('Tipo de socio actualizado correctamente');
+        this.hideTipoSocioDialog();
+      },
+      error: (error) => {
+        this.enviarMensajeError(error.error?.message || 'No se pudo actualizar el tipo de socio');
+        console.error('Error cambiando tipo de socio:', error);
+      }
+    });
   }
 
   actualizarEstadoCliente(id: number, estado: string): void {
@@ -258,7 +378,8 @@ export class Clientes implements OnInit {
       // Crear nuevo cliente
       this.clienteService.crearCliente(this.cliente).subscribe({
         next: (response) => {
-          this.clientes.push(response);
+          // Se reordena para que el cliente recién creado (mayor id) quede en la primera fila
+          this.clientes = this.ordenarPorRecientes([...this.clientes, response]);
           this.enviarMensajeExito('Cliente creado correctamente');
           this.clienteDialog = false;
           this.cliente = this.getEmptyCliente();

@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
 import { ButtonModule } from 'primeng/button';
@@ -59,11 +59,16 @@ export class TransaccionesRealizadas implements OnInit {
 
   rows: number = 5;
 
+  // Si se llega desde el hub de un cliente (/clientes/:id), se guarda para mostrar el breadcrumb "Volver a [cliente]"
+  origenClienteId?: number;
+  origenClienteNombre?: string;
+
   constructor(
     private messageService: MessageService,
     private transaccionService: TransaccionesDeAhorroService,
     private cuentaService: CuentasDeAhorroService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router
   ) {
     afterNextRender(() => {
       this.loadCuentas();
@@ -72,6 +77,15 @@ export class TransaccionesRealizadas implements OnInit {
 
   ngOnInit(): void {
     this.initializeColumns();
+
+    const clienteIdParam = this.route.snapshot.queryParamMap.get('clienteId');
+    if (clienteIdParam) {
+      const idCliente = Number(clienteIdParam);
+      if (!Number.isNaN(idCliente) && idCliente > 0) {
+        this.origenClienteId = idCliente;
+        this.origenClienteNombre = this.route.snapshot.queryParamMap.get('clienteNombre') || undefined;
+      }
+    }
 
     // Importante: setear `cuentaSeleccionada` ANTES del primer check para evitar NG0100
     const cuentaIdParam = this.route.snapshot.queryParamMap.get('cuentaId');
@@ -85,6 +99,12 @@ export class TransaccionesRealizadas implements OnInit {
     }
 
     this.loadTransacciones();
+  }
+
+  volverAlCliente(): void {
+    if (this.origenClienteId) {
+      this.router.navigate(['/clientes', this.origenClienteId]);
+    }
   }
 
   private initializeColumns(): void {
@@ -205,6 +225,40 @@ export class TransaccionesRealizadas implements OnInit {
     if (!idCuenta) return '';
     const cuenta = this.cuentas.find(c => c.idCuenta === idCuenta);
     return cuenta ? cuenta.numeroCuenta || '' : '';
+  }
+
+  /**
+   * Fase 2: navegar al hub del cliente dueño de la transacción.
+   * TransaccionAhorroResponseDTO solo trae idCuenta, no idCliente. Se resuelve
+   * primero contra `this.cuentas` (ya cargado en loadCuentas()); si por algún
+   * motivo esa cuenta no está en memoria, se cae a obtenerCuentaPorId (ya usado
+   * en Cuentas) en vez de agregar un endpoint nuevo.
+   */
+  verCliente(transaccion: TransaccionAhorroResponseDTO): void {
+    if (!transaccion.idCuenta) {
+      this.enviarMensajeError('No se pudo identificar la cuenta de la transacción');
+      return;
+    }
+
+    const cuentaEnMemoria = this.cuentas.find(c => c.idCuenta === transaccion.idCuenta);
+    if (cuentaEnMemoria?.idCliente) {
+      this.router.navigate(['/clientes', cuentaEnMemoria.idCliente], { queryParams: { origen: 'transacciones-realizadas' } });
+      return;
+    }
+
+    this.cuentaService.obtenerCuentaPorId(transaccion.idCuenta).subscribe({
+      next: (cuenta) => {
+        if (cuenta.idCliente) {
+          this.router.navigate(['/clientes', cuenta.idCliente], { queryParams: { origen: 'transacciones-realizadas' } });
+        } else {
+          this.enviarMensajeError('No se pudo encontrar al cliente de la cuenta');
+        }
+      },
+      error: (error) => {
+        this.enviarMensajeError('No se pudo encontrar al cliente de la cuenta');
+        console.error('Error resolving cuenta:', error);
+      }
+    });
   }
 
   enviarMensajeError(detail: string): void {

@@ -1,0 +1,50 @@
+<p-dialog [(visible)]="visible" [style]="{ width: '550px' }" header="Solicitar Préstamo" [modal]="true">
+    <ng-template #content>
+        <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12">
+                <label for="cliente" class="block font-bold mb-3">Cliente *</label>
+
+                <!-- Cliente ya conocido (viene del hub): campo de solo lectura, sin dropdown -->
+                @if (clienteBloqueado) {
+                    <input type="text" pInputText [value]="clienteBloqueadoNombre" disabled fluid />
+                } @else {
+                    <p-select [options]="clientesOptions" [(ngModel)]="prestamo.idCliente" optionLabel="label"
+                        optionValue="value" placeholder="Seleccione un cliente" class="w-full"
+                        [filter]="true" filterPlaceholder="Buscar por nombre o cédula..."
+                        [showClear]="true" [virtualScroll]="clientesOptions.length > 50"
+                        appendTo="body"
+                        [virtualScrollItemSize]="38" />
+                }
+                <small class="text-red-500" *ngIf="submitted && !prestamo.idCliente">El cliente es requerido.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="montoSolicitado" class="block font-bold mb-3">Monto Solicitado *</label>
+                <p-inputnumber [(ngModel)]="prestamo.montoSolicitado" mode="currency" currency="USD" locale="es-EC"
+                    [min]="1" [max]="1000000" class="w-full" />
+                <small class="text-red-500" *ngIf="submitted && (!prestamo.montoSolicitado || prestamo.montoSolicitado <= 0)">
+                    El monto solicitado es requerido y debe ser mayor a 0.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="tipoPrestamo" class="block font-bold mb-3">Tipo de Préstamo</label>
+                <p-select [options]="[
+                    { label: 'Personal', value: 'PERSONAL' }
+                ]" [(ngModel)]="prestamo.tipoPrestamo" optionLabel="label" optionValue="value"
+                    placeholder="Seleccione el tipo" class="w-full" appendTo="body" />
+            </div>
+
+            <div class="col-span-12">
+                <label for="plazoMeses" class="block font-bold mb-3">Plazo (Meses) *</label>
+                <p-inputnumber [(ngModel)]="prestamo.plazoMeses" [min]="1" [max]="120" class="w-full" />
+                <small class="text-red-500" *ngIf="submitted && (!prestamo.plazoMeses || prestamo.plazoMeses <= 0)">
+                    El plazo en meses es requerido y debe ser mayor a 0.</small>
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template #footer>
+        <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+        <p-button label="Guardar" icon="pi pi-check" (click)="savePrestamo()" />
+    </ng-template>
+</p-dialog>

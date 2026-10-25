@@ -1,4 +1,5 @@
 import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { CuentaFormDialog } from './cuenta-form-dialog/cuenta-form-dialog';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Header } from "../header/header";
@@ -18,13 +19,10 @@ import { FormsModule } from '@angular/forms';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
-import { CuentaAhorroResponseDTO, CuentaAhorroRequestDTO } from '../../generated-api';
+import { CuentaAhorroResponseDTO } from '../../generated-api';
 import { CuentasDeAhorroService } from '../../generated-api/api/cuentasDeAhorro.service';
-import { ClienteControllerService } from '../../generated-api/api/clienteController.service';
 import { TransaccionesDeAhorroService } from '../../generated-api/api/transaccionesDeAhorro.service';
-import { ClienteResponseDTO } from '../../generated-api/model/clienteResponseDTO';
 import { TransaccionAhorroRequestDTO } from '../../generated-api/model/transaccionAhorroRequestDTO';
-import { firstValueFrom } from 'rxjs';
 
 interface Column {
   field: string;
@@ -36,32 +34,20 @@ interface Column {
   imports: [
     CommonModule, Header, Toast, ButtonModule, ToolbarModule, TableModule, IconFieldModule, InputTextModule,
     InputIconModule, Tag, DialogModule, SelectModule, FormsModule, MessageModule, ConfirmDialog, ConfirmDialogModule,
-    TooltipModule
+    TooltipModule, CuentaFormDialog
   ],
-  providers: [MessageService, ConfirmationService, CuentasDeAhorroService, ClienteControllerService, TransaccionesDeAhorroService],
+  providers: [MessageService, ConfirmationService, CuentasDeAhorroService, TransaccionesDeAhorroService],
   templateUrl: './cuentas.html',
   styleUrl: './cuentas.css',
 })
 export class Cuentas implements OnInit {
 
-  cuentaDialog: boolean = false;
   cuentas: CuentaAhorroResponseDTO[] = [];
-  cuenta: CuentaAhorroRequestDTO = this.getEmptyCuenta();
-  cuentaId?: number;
   selectedCuentas: CuentaAhorroResponseDTO[] = [];
-  submitted: boolean = false;
 
   @ViewChild('dt') dt!: Table;
+  @ViewChild(CuentaFormDialog) cuentaFormDialog!: CuentaFormDialog;
   cols: Column[] = [];
-
-  //Seleccion de estado
-  estados: any[] = [];
-  selectedEstado: string | undefined;
-  estadoOriginal: string | undefined;
-
-  // Lista de clientes para el selector
-  clientes: ClienteResponseDTO[] = [];
-  tiposCuenta: any[] = [];
 
   // Diálogo de transacciones
   transaccionDialog: boolean = false;
@@ -75,40 +61,19 @@ export class Cuentas implements OnInit {
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
     private cuentaService: CuentasDeAhorroService,
-    private clienteService: ClienteControllerService,
     private transaccionService: TransaccionesDeAhorroService,
     private router: Router
   ) {
     // Ejecutar loadCuentas solo en el navegador (después de la hidratación SSR)
     afterNextRender(() => {
       this.loadCuentas();
-      this.loadClientes();
     });
   }
 
   ngOnInit(): void {
-    this.initializeEstados();
-    this.initializeTiposCuenta();
     this.initializeTiposTransaccion();
     this.initializeMetodosPago();
     this.initializeColumns();
-  }
-
-  private initializeEstados(): void {
-    this.estados = [
-      { label: 'Activo', value: 'ACTIVO' },
-      { label: 'Inactivo', value: 'INACTIVO' },
-      { label: 'Bloqueado', value: 'BLOQUEADO' },
-      { label: 'Suspendido', value: 'SUSPENDIDO' }
-    ];
-  }
-
-  private initializeTiposCuenta(): void {
-    this.tiposCuenta = [
-      //AHORRO o CORRIENTE
-      { label: 'Ahorro', value: 'AHORRO' },
-      { label: 'Corriente', value: 'CORRIENTE' }
-    ];
   }
 
   private initializeTiposTransaccion(): void {
@@ -142,7 +107,7 @@ export class Cuentas implements OnInit {
   loadCuentas(): void {
     this.cuentaService.obtenerTodasLasCuentas().subscribe({
       next: (data) => {
-        this.cuentas = data;
+        this.cuentas = this.ordenarPorRecientes(data);
         console.log(this.cuentas);
       },
       error: (error) => {
@@ -152,154 +117,25 @@ export class Cuentas implements OnInit {
     });
   }
 
-  loadClientes(): void {
-    this.clienteService.obtenerTodosLosClientes().subscribe({
-      next: (data) => {
-        this.clientes = data.filter(c => c.estado === 'ACTIVO');
-      },
-      error: (error) => {
-        console.error('Error loading clientes:', error);
-      }
-    });
+  /**
+   * Ordena por la fecha más reciente: ultimaActualizacion si existe (cubre tanto
+   * crear como editar), y si no, fechaApertura. Así el registro más nuevo o el
+   * último editado siempre queda en la primera fila.
+   */
+  private ordenarPorRecientes(cuentas: CuentaAhorroResponseDTO[]): CuentaAhorroResponseDTO[] {
+    const fechaOrden = (cuenta: CuentaAhorroResponseDTO): number => {
+      const fecha = cuenta.ultimaActualizacion ?? cuenta.fechaApertura;
+      return fecha ? new Date(fecha).getTime() : 0;
+    };
+    return [...cuentas].sort((a, b) => fechaOrden(b) - fechaOrden(a));
   }
 
   openNew(): void {
-    this.cuenta = this.getEmptyCuenta();
-    this.cuentaId = undefined;
-    this.selectedEstado = undefined;
-    this.estadoOriginal = undefined;
-    this.submitted = false;
-    this.cuentaDialog = true;
+    this.cuentaFormDialog.abrirNuevo();
   }
 
   editCuenta(cuenta: CuentaAhorroResponseDTO): void {
-    this.cuenta = {
-      idCliente: cuenta.idCliente || 0,
-      numeroCuenta: cuenta.numeroCuenta || '',
-      saldoActual: cuenta.saldoActual || 0,
-      tasaInteres: cuenta.tasaInteres,
-      tipoCuenta: cuenta.tipoCuenta || ''
-    };
-    this.cuentaId = cuenta.idCuenta;
-    // Cargar el estado actual de la cuenta
-    this.estadoOriginal = cuenta.estado;
-    this.selectedEstado = cuenta.estado;
-    this.cuentaDialog = true;
-  }
-
-  hideDialog(): void {
-    this.cuentaDialog = false;
-    this.submitted = false;
-    this.selectedEstado = undefined;
-    this.estadoOriginal = undefined;
-  }
-
-  actualizarEstadoCuenta(id: number, estado: string): void {
-    // Usar el endpoint apropiado según el estado
-    if (estado === 'ACTIVO') {
-      this.cuentaService.activarCuenta(id).subscribe({
-        next: () => {
-          this.loadCuentas();
-          this.enviarMensajeExito('Cuenta actualizada correctamente');
-          this.cuentaDialog = false;
-          this.cuenta = this.getEmptyCuenta();
-          this.selectedEstado = undefined;
-          this.estadoOriginal = undefined;
-        },
-        error: (error) => {
-          this.enviarMensajeError('No se pudo actualizar el estado de la cuenta');
-          console.error('Error updating estado:', error);
-        }
-      });
-    } else if (estado === 'INACTIVO') {
-      this.cuentaService.desactivarCuenta(id).subscribe({
-        next: () => {
-          this.loadCuentas();
-          this.enviarMensajeExito('Cuenta actualizada correctamente');
-          this.cuentaDialog = false;
-          this.cuenta = this.getEmptyCuenta();
-          this.selectedEstado = undefined;
-          this.estadoOriginal = undefined;
-        },
-        error: (error) => {
-          this.enviarMensajeError('No se pudo actualizar el estado de la cuenta');
-          console.error('Error updating estado:', error);
-        }
-      });
-    } else {
-      // Para BLOQUEADO y SUSPENDIDO, no hay endpoints específicos disponibles
-      this.enviarMensajeInfo(`El cambio de estado a ${estado} requiere configuración adicional en el backend. Los datos de la cuenta se actualizaron correctamente.`);
-      this.loadCuentas();
-      this.cuentaDialog = false;
-      this.cuenta = this.getEmptyCuenta();
-      this.selectedEstado = undefined;
-      this.estadoOriginal = undefined;
-    }
-  }
-
-  async saveCuenta(): Promise<void> {
-    this.submitted = true;
-
-    //Validar campos requeridos
-    const camposVacios = this.ValidarCamposRequeridos();
-    if (camposVacios.length > 0) {
-      this.enviarMensajeAdvertencia(`Es obligatorio: ${camposVacios.join(', ')}`);
-      return;
-    }
-
-    if (this.cuentaId) {
-      // Actualizar cuenta existente
-      this.cuentaService.actualizarCuenta(this.cuenta, this.cuentaId).subscribe({
-        next: (response) => {
-          // Verificar si el estado cambió
-          const nuevoEstado = this.selectedEstado;
-          const estadoCambio = nuevoEstado && nuevoEstado !== this.estadoOriginal;
-
-          if (estadoCambio) {
-            // Si el estado cambió, actualizarlo usando el endpoint correspondiente
-            this.actualizarEstadoCuenta(this.cuentaId!, nuevoEstado);
-          } else {
-            // Si no cambió el estado, solo actualizar los datos
-            const index = this.cuentas.findIndex(c => c.idCuenta === this.cuentaId);
-            if (index !== -1) {
-              this.cuentas[index] = response;
-            }
-            this.enviarMensajeExito('Cuenta actualizada correctamente');
-            this.cuentaDialog = false;
-            this.cuenta = this.getEmptyCuenta();
-            this.selectedEstado = undefined;
-            this.estadoOriginal = undefined;
-          }
-        },
-        error: (error) => {
-          this.enviarMensajeError('No se pudo actualizar la cuenta');
-          console.error('Error updating cuenta:', error);
-        }
-      });
-    } else {
-      //Validar si el número de cuenta existe
-      const numeroCuentaExiste = await this.ValidarNumeroCuentaExistente(this.cuenta.numeroCuenta);
-      if (numeroCuentaExiste) {
-        this.enviarMensajeError('Ya existe una cuenta con este número');
-        return;
-      }
-
-      // Crear nueva cuenta
-      this.cuenta.numeroCuenta = "0000000";
-      this.cuentaService.crearCuenta(this.cuenta).subscribe({
-        next: (response) => {
-          this.cuentas.push(response);
-          this.enviarMensajeExito('Cuenta creada correctamente');
-          this.cuentaDialog = false;
-          this.cuenta = this.getEmptyCuenta();
-          this.selectedEstado = undefined;
-        },
-        error: (error) => {
-          this.enviarMensajeError('No se pudo crear la cuenta');
-          console.error('Error creating cuenta:', error);
-        }
-      });
-    }
+    this.cuentaFormDialog.abrirEditar(cuenta);
   }
 
   deleteCuenta(cuenta: CuentaAhorroResponseDTO): void {
@@ -343,47 +179,6 @@ export class Cuentas implements OnInit {
     this.dt.exportCSV();
   }
 
-  private getEmptyCuenta(): CuentaAhorroRequestDTO {
-    return {
-      idCliente: 0,
-      numeroCuenta: '',
-      saldoActual: 0,
-      tasaInteres: 0,
-      tipoCuenta: ''
-    };
-  }
-
-  //Validar campos requeridos
-  ValidarCamposRequeridos(): string[] {
-    const camposVacios: string[] = [];
-
-    if (!this.cuenta.idCliente || this.cuenta.idCliente === 0) {
-      camposVacios.push('Cliente');
-    }
-    /*if (!this.cuenta.numeroCuenta || this.cuenta.numeroCuenta.trim() === '') {
-      camposVacios.push('Número de Cuenta');
-    }*/
-    if (this.cuenta.saldoActual === undefined || this.cuenta.saldoActual < 0) {
-      camposVacios.push('Saldo Actual');
-    }
-    if (!this.cuenta.tipoCuenta || this.cuenta.tipoCuenta.trim() === '') {
-      camposVacios.push('Tipo de Cuenta');
-    }
-
-    return camposVacios;
-  }
-
-  //Validar si existe el número de cuenta
-  async ValidarNumeroCuentaExistente(numeroCuenta: string): Promise<boolean> {
-    try {
-      const cuenta = await firstValueFrom(this.cuentaService.obtenerCuentaPorNumero(numeroCuenta));
-      return cuenta ? true : false;
-    } catch (error) {
-      // Si da error 404, significa que no existe
-      return false;
-    }
-  }
-
   // Métodos para validar entrada en tiempo real
   soloNumeros(event: KeyboardEvent): boolean {
     const charCode = event.which ? event.which : event.keyCode;
@@ -413,8 +208,7 @@ export class Cuentas implements OnInit {
     const input = event.target as HTMLInputElement;
     const valorOriginal = input.value;
 
-    // Actualizar el modelo según el campo
-    if (input.id === 'monto' || input.id === 'saldoActual' || input.id === 'tasaInteres') {
+    if (input.id === 'monto') {
       // Permitir decimales (aceptar "." y también "," convirtiéndola a ".")
       const normalizado = valorOriginal.replace(/,/g, '.');
       const valorConDecimales = normalizado.replace(/[^0-9.]/g, '');
@@ -428,27 +222,12 @@ export class Cuentas implements OnInit {
         input.value = valorLimpio;
       }
 
-      const numero = parseFloat(valorLimpio);
-      if (input.id === 'monto') {
-        this.transaccion.monto = numero || 0;
-      } else if (input.id === 'saldoActual') {
-        this.cuenta.saldoActual = numero || 0;
-      } else if (input.id === 'tasaInteres') {
-        this.cuenta.tasaInteres = numero || 0;
-      }
+      this.transaccion.monto = parseFloat(valorLimpio) || 0;
     } else {
       // Para otros campos, solo números enteros
       const valorLimpio = valorOriginal.replace(/[^0-9]/g, '');
       if (valorOriginal !== valorLimpio) {
         input.value = valorLimpio;
-      }
-
-      if (input.id === 'numeroCuenta') {
-        this.cuenta.numeroCuenta = valorLimpio;
-      } else if (input.id === 'saldoActual') {
-        this.cuenta.saldoActual = parseFloat(valorLimpio) || 0;
-      } else if (input.id === 'tasaInteres') {
-        this.cuenta.tasaInteres = parseFloat(valorLimpio) || 0;
       }
     }
   }
@@ -524,13 +303,6 @@ export class Cuentas implements OnInit {
     });
   }
 
-  // Obtener nombre del cliente para mostrar en el selector
-  getClienteNombre(idCliente?: number): string {
-    if (!idCliente) return '';
-    const cliente = this.clientes.find(c => c.idCliente === idCliente);
-    return cliente ? `${cliente.nombres} ${cliente.apellidos} - ${cliente.cedula}` : '';
-  }
-
   // Métodos para transacciones
   generarTransaccion(cuenta: CuentaAhorroResponseDTO): void {
     this.cuentaSeleccionada = cuenta;
@@ -590,7 +362,7 @@ export class Cuentas implements OnInit {
           this.hideTransaccionDialog();
         },
         error: (error) => {
-          this.enviarMensajeError('No se pudo realizar el depósito');
+          this.enviarMensajeError(error.error?.message || 'No se pudo realizar el depósito');
           console.error('Error realizando depósito:', error);
         }
       });
@@ -602,7 +374,7 @@ export class Cuentas implements OnInit {
           this.hideTransaccionDialog();
         },
         error: (error) => {
-          this.enviarMensajeError('No se pudo realizar el retiro');
+          this.enviarMensajeError(error.error?.message || 'No se pudo realizar el retiro');
           console.error('Error realizando retiro:', error);
         }
       });
@@ -632,6 +404,15 @@ export class Cuentas implements OnInit {
       this.router.navigate(['/transacciones-realizadas'], { queryParams: { cuentaId: cuentaId } });
     } else {
       this.enviarMensajeError('No se pudo identificar la cuenta');
+    }
+  }
+
+  // Fase 2: navegar al hub del cliente dueño de la cuenta. El DTO ya trae idCliente, no hace falta resolverlo.
+  verCliente(cuenta: CuentaAhorroResponseDTO): void {
+    if (cuenta.idCliente) {
+      this.router.navigate(['/clientes', cuenta.idCliente], { queryParams: { origen: 'cuentas' } });
+    } else {
+      this.enviarMensajeError('No se pudo identificar al cliente de la cuenta');
     }
   }
 }

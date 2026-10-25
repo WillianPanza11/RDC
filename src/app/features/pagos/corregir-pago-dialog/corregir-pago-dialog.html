@@ -1,0 +1,41 @@
+<p-dialog [(visible)]="visible" [style]="{ width: '500px' }" header="Corregir Pago" [modal]="true">
+    <ng-template #content>
+        <div class="flex flex-col gap-6">
+            <div *ngIf="pagoSeleccionado" class="p-4 bg-blue-50 rounded">
+                <h3 class="font-bold mb-2">Pago Original</h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div><strong>Cliente:</strong> {{ pagoSeleccionado.nombreCliente }}</div>
+                    <div><strong>Cuota:</strong> #{{ pagoSeleccionado.numeroCuotaPagada }}</div>
+                    <div><strong>Monto Pagado:</strong> {{ formatCurrency(pagoSeleccionado.montoPagado) }}</div>
+                    <div><strong>Fecha de Pago:</strong> {{ pagoSeleccionado.fechaPago }}</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12">
+                    <label for="montoCorregido" class="block font-bold mb-3">Monto Corregido *</label>
+                    <p-inputnumber [(ngModel)]="correccion.montoCorregido" mode="currency" currency="USD"
+                        locale="es-EC" [min]="0.01" [max]="1000000" class="w-full" />
+                    <small class="text-red-500"
+                        *ngIf="submitted && (!correccion.montoCorregido || correccion.montoCorregido <= 0)">
+                        El monto corregido debe ser mayor a 0.</small>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12">
+                    <label for="motivo" class="block font-bold mb-3">Motivo *</label>
+                    <textarea pTextarea id="motivo" [(ngModel)]="correccion.motivo" required fluid rows="3"
+                        autoResize placeholder="Explique el motivo de la corrección"></textarea>
+                    <small class="text-red-500" *ngIf="submitted && !correccion.motivo.trim()">
+                        El motivo es requerido.</small>
+                </div>
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template #footer>
+        <p-button label="Cancelar" icon="pi pi-times" text (click)="hideDialog()" />
+        <p-button label="Corregir Pago" icon="pi pi-check" severity="warn" (click)="confirmarCorreccion()" />
+    </ng-template>
+</p-dialog>

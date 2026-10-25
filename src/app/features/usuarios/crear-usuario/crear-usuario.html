@@ -1,0 +1,75 @@
+<!-- header -->
+<app-header></app-header>
+<div class="card">
+    <p-toast />
+
+    
+    <!-- Centrado horizontal manteniendo el mismo ancho máximo que ya tenía el formulario (700px); en pantallas
+    angostas max-width no fuerza nada, el contenedor simplemente ocupa el 100% disponible. -->
+    <div style="max-width: 700px; margin: 0 auto;">
+        <h1 class="m-0 mb-6" style="font-size: 1.5rem; font-weight: 600;">Crear Usuario</h1>
+        <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12">
+                <label for="nombreCompleto" class="block font-bold mb-3">Nombre Completo *</label>
+                <input type="text" pInputText id="nombreCompleto" [(ngModel)]="usuario.nombreCompleto" fluid />
+                <small class="text-red-500" *ngIf="submitted && !usuario.nombreCompleto">El nombre completo es
+                    requerido.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="username" class="block font-bold mb-3">Usuario *</label>
+                <input type="text" pInputText id="username" [(ngModel)]="usuario.username" fluid />
+                <small class="text-red-500" *ngIf="submitted && !usuario.username">El usuario es requerido.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="cedula" class="block font-bold mb-3">Cédula *</label>
+                <input type="text" pInputText id="cedula" [(ngModel)]="usuario.cedula" fluid
+                    (keypress)="soloNumeros($event)" (input)="limpiarSoloNumeros($event)" maxlength="10" />
+                <small class="text-red-500" *ngIf="submitted && !usuario.cedula">La cédula es requerida.</small>
+                <small class="text-red-500" *ngIf="submitted && usuario.cedula && !ValidarCedulaValida(usuario.cedula)">La
+                    cédula debe tener 10 dígitos.</small>
+            </div>
+
+            <div class="col-span-12">
+                <label for="email" class="block font-bold mb-3">Email</label>
+                <input type="email" pInputText id="email" [(ngModel)]="usuario.email" fluid />
+                <small class="text-red-500" *ngIf="submitted && usuario.email && !emailValido()">El email no es
+                    válido.</small>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="password" class="block font-bold mb-3">Contraseña *</label>
+                <p-password id="password" [(ngModel)]="usuario.password" [toggleMask]="true" [feedback]="true"
+                    promptLabel="Ingrese una contraseña" weakLabel="Débil" mediumLabel="Media" strongLabel="Fuerte"
+                    styleClass="w-full" inputStyleClass="w-full" fluid />
+                <small class="text-red-500" *ngIf="submitted && !usuario.password">La contraseña es requerida.</small>
+                <ng-container *ngIf="submitted && usuario.password">
+                    <small class="text-red-500 block" *ngFor="let error of erroresPassword">{{ error }}</small>
+                </ng-container>
+            </div>
+
+            <div class="col-span-12 md:col-span-6">
+                <label for="confirmarPassword" class="block font-bold mb-3">Confirmar Contraseña *</label>
+                <p-password id="confirmarPassword" [(ngModel)]="confirmarPassword" [toggleMask]="true"
+                    [feedback]="false" styleClass="w-full" inputStyleClass="w-full" fluid />
+                <small class="text-red-500" *ngIf="submitted && !confirmarPassword">Debe confirmar la
+                    contraseña.</small>
+                <small class="text-red-500" *ngIf="submitted && confirmarPassword && !passwordsCoinciden">Las
+                    contraseñas no coinciden.</small>
+            </div>
+
+            <div class="col-span-12">
+                <label for="rol" class="block font-bold mb-3">Rol *</label>
+                <p-select [options]="roles" [(ngModel)]="rolSeleccionado" optionLabel="label" optionValue="value"
+                    placeholder="Seleccione un rol" class="w-full" />
+                <small class="text-red-500" *ngIf="submitted && !rolSeleccionado">Debe seleccionar un rol.</small>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-6">
+            <p-button label="Crear Usuario" icon="pi pi-user-plus" [loading]="guardando" (click)="guardar()" />
+            <p-button label="Limpiar" icon="pi pi-refresh" severity="secondary" text (click)="limpiarFormulario()" />
+        </div>
+    </div>
+</div>

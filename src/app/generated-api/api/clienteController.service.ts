@@ -17,6 +17,8 @@ import { CustomHttpUrlEncodingCodec }                        from '../encoder';
 
 import { Observable }                                        from 'rxjs';
 
+import { CambiarTipoSocioDTO } from '../model/cambiarTipoSocioDTO';
+import { ClienteEnMoraDTO } from '../model/clienteEnMoraDTO';
 import { ClienteRequestDTO } from '../model/clienteRequestDTO';
 import { ClienteResponseDTO } from '../model/clienteResponseDTO';
 
@@ -160,6 +162,65 @@ export class ClienteControllerService {
             {
                 body: body,
                 params: queryParameters,
+                withCredentials: this.configuration.withCredentials,
+                headers: headers,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Cambiar tipo de socio
+     * Cambia el tipo de socio del cliente (MAYORISTA/MINORISTA). Solo ROLE_ADMIN. Actualiza en cascada la tasa de interés de todas sus cuentas de ahorro.
+     * @param body 
+     * @param id 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public cambiarTipoSocio(body: CambiarTipoSocioDTO, id: number, observe?: 'body', reportProgress?: boolean): Observable<ClienteResponseDTO>;
+    public cambiarTipoSocio(body: CambiarTipoSocioDTO, id: number, observe?: 'response', reportProgress?: boolean): Observable<HttpResponse<ClienteResponseDTO>>;
+    public cambiarTipoSocio(body: CambiarTipoSocioDTO, id: number, observe?: 'events', reportProgress?: boolean): Observable<HttpEvent<ClienteResponseDTO>>;
+    public cambiarTipoSocio(body: CambiarTipoSocioDTO, id: number, observe: any = 'body', reportProgress: boolean = false ): Observable<any> {
+
+        if (body === null || body === undefined) {
+            throw new Error('Required parameter body was null or undefined when calling cambiarTipoSocio.');
+        }
+
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling cambiarTipoSocio.');
+        }
+
+        let headers = this.defaultHeaders;
+
+        // authentication (Bearer Authentication) required
+        if (this.configuration.accessToken) {
+            const accessToken = typeof this.configuration.accessToken === 'function'
+                ? this.configuration.accessToken()
+                : this.configuration.accessToken;
+            headers = headers.set('Authorization', 'Bearer ' + accessToken);
+        }
+        // to determine the Accept header
+        let httpHeaderAccepts: string[] = [
+            '*/*'
+        ];
+        const httpHeaderAcceptSelected: string | undefined = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        if (httpHeaderAcceptSelected != undefined) {
+            headers = headers.set('Accept', httpHeaderAcceptSelected);
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected != undefined) {
+            headers = headers.set('Content-Type', httpContentTypeSelected);
+        }
+
+        return this.httpClient.request<ClienteResponseDTO>('patch',`${this.basePath}/api/clientes/${encodeURIComponent(String(id))}/tipo-socio`,
+            {
+                body: body,
                 withCredentials: this.configuration.withCredentials,
                 headers: headers,
                 observe: observe,
@@ -369,6 +430,49 @@ export class ClienteControllerService {
         return this.httpClient.request<ClienteResponseDTO>('get',`${this.basePath}/api/clientes/getClientById`,
             {
                 params: queryParameters,
+                withCredentials: this.configuration.withCredentials,
+                headers: headers,
+                observe: observe,
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Clientes en mora
+     * Clientes con al menos una cuota vencida y sin pagar, agregado por cliente. Ordenado por días de atraso descendente (el más urgente primero).
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     */
+    public obtenerClientesEnMora(observe?: 'body', reportProgress?: boolean): Observable<Array<ClienteEnMoraDTO>>;
+    public obtenerClientesEnMora(observe?: 'response', reportProgress?: boolean): Observable<HttpResponse<Array<ClienteEnMoraDTO>>>;
+    public obtenerClientesEnMora(observe?: 'events', reportProgress?: boolean): Observable<HttpEvent<Array<ClienteEnMoraDTO>>>;
+    public obtenerClientesEnMora(observe: any = 'body', reportProgress: boolean = false ): Observable<any> {
+
+        let headers = this.defaultHeaders;
+
+        // authentication (Bearer Authentication) required
+        if (this.configuration.accessToken) {
+            const accessToken = typeof this.configuration.accessToken === 'function'
+                ? this.configuration.accessToken()
+                : this.configuration.accessToken;
+            headers = headers.set('Authorization', 'Bearer ' + accessToken);
+        }
+        // to determine the Accept header
+        let httpHeaderAccepts: string[] = [
+            '*/*'
+        ];
+        const httpHeaderAcceptSelected: string | undefined = this.configuration.selectHeaderAccept(httpHeaderAccepts);
+        if (httpHeaderAcceptSelected != undefined) {
+            headers = headers.set('Accept', httpHeaderAcceptSelected);
+        }
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+        ];
+
+        return this.httpClient.request<Array<ClienteEnMoraDTO>>('get',`${this.basePath}/api/clientes/en-mora`,
+            {
                 withCredentials: this.configuration.withCredentials,
                 headers: headers,
                 observe: observe,
