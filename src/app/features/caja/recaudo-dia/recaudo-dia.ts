@@ -1,5 +1,5 @@
-import { Component, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Header } from '../../header/header';
 import { Toast } from 'primeng/toast';
@@ -22,7 +22,9 @@ import { DetalleCajeroDiaDTO } from '../../../generated-api/model/detalleCajeroD
   providers: [MessageService, CierresDeCajaService],
   templateUrl: './recaudo-dia.html',
 })
-export class RecaudoDia {
+export class RecaudoDia implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   fechaSeleccionada: Date = new Date();
   recaudo?: RecaudoDiaResponseDTO;
@@ -31,10 +33,12 @@ export class RecaudoDia {
   constructor(
     private messageService: MessageService,
     private cierresDeCajaService: CierresDeCajaService
-  ) {
-    afterNextRender(() => {
+  ) { }
+
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
       this.cargarRecaudo();
-    });
+    }
   }
 
   onFechaChange(): void {

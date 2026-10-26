@@ -1,5 +1,5 @@
-import { Component, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Header } from '../../header/header';
 import { Toast } from 'primeng/toast';
@@ -31,7 +31,9 @@ import { ClienteEnMoraDTO } from '../../../generated-api/model/clienteEnMoraDTO'
   templateUrl: './en-mora.html',
   styleUrl: './en-mora.css',
 })
-export class ClientesEnMora {
+export class ClientesEnMora implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   clientesEnMora: ClienteEnMoraDTO[] = [];
   cargando: boolean = true;
@@ -42,11 +44,12 @@ export class ClientesEnMora {
     private messageService: MessageService,
     private clienteService: ClienteControllerService,
     private router: Router
-  ) {
-    // Ejecutar solo en el navegador (después de la hidratación SSR), igual que en Clientes/Cuentas/Prestamos.
-    afterNextRender(() => {
+  ) { }
+
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
       this.cargarClientesEnMora();
-    });
+    }
   }
 
   cargarClientesEnMora(): void {

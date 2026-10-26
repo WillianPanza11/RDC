@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
@@ -10,7 +10,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { SelectModule } from 'primeng/select';
 import { InputIconModule } from 'primeng/inputicon';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { MessageModule } from 'primeng/message';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -39,6 +39,8 @@ interface Column {
 })
 export class Pagos implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   @ViewChild(CorregirPagoDialog) corregirPagoDialog!: CorregirPagoDialog;
 
   pagos: PagoPrestamoResponseDTO[] = [];
@@ -62,15 +64,15 @@ export class Pagos implements OnInit {
     private clienteService: ClienteControllerService,
     private router: Router,
     protected authService: AuthService
-  ) {
-    afterNextRender(() => {
-      this.loadPagos();
-      this.loadClientes();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initializeColumns();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadPagos();
+      this.loadClientes();
+    }
   }
 
   private initializeColumns(): void {

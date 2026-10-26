@@ -1,5 +1,5 @@
-import { Component, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Header } from '../../header/header';
@@ -36,7 +36,9 @@ import { CerrarCajaDialog } from '../cerrar-caja-dialog/cerrar-caja-dialog';
   providers: [MessageService, ConfirmationService, CierresDeCajaService, UsuariosService],
   templateUrl: './historial-cierres.html',
 })
-export class HistorialCierres {
+export class HistorialCierres implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   @ViewChild('dt') dt!: Table;
   @ViewChild(CerrarCajaDialog) cerrarCajaDialog!: CerrarCajaDialog;
@@ -84,10 +86,12 @@ export class HistorialCierres {
         this.desde = haceUnAnio;
       }
     }
+  }
 
-    afterNextRender(() => {
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
       this.cargarCajeros();
-    });
+    }
   }
 
   private cargarCajeros(): void {

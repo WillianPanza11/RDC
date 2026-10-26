@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { PrestamoFormDialog } from './prestamo-form-dialog/prestamo-form-dialog';
 import { PagoFormDialog } from './pago-form-dialog/pago-form-dialog';
@@ -14,7 +14,7 @@ import { InputIconModule } from 'primeng/inputicon';
 import { Tag } from 'primeng/tag';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { MessageModule } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { ConfirmationService } from 'primeng/api';
@@ -49,6 +49,8 @@ interface Column {
   styleUrl: './prestamos.css',
 })
 export class Prestamos implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   aprobarDialog: boolean = false;
   calcularCuotaDialog: boolean = false;
@@ -92,15 +94,15 @@ export class Prestamos implements OnInit {
     private cuentasService: CuentasDeAhorroService,
     private validationService: ValidationService,
     private router: Router
-  ) {
-    afterNextRender(() => {
-      this.loadPrestamos();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initializeEstados();
     this.initializeColumns();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadPrestamos();
+    }
   }
 
   private initializeEstados(): void {

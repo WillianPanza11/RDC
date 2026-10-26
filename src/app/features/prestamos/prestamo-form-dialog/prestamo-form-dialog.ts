@@ -1,5 +1,5 @@
-import { Component, EventEmitter, OnInit, Output, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, OnInit, Output, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
@@ -26,6 +26,8 @@ import { ClienteResponseDTO } from '../../../generated-api/model/clienteResponse
 })
 export class PrestamoFormDialog implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   @Output() guardado = new EventEmitter<void>();
 
   visible: boolean = false;
@@ -42,13 +44,13 @@ export class PrestamoFormDialog implements OnInit {
     private messageService: MessageService,
     private prestamoService: PrstamosService,
     private clienteService: ClienteControllerService
-  ) {
-    afterNextRender(() => {
-      this.loadClientes();
-    });
-  }
+  ) { }
 
-  ngOnInit(): void { }
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadClientes();
+    }
+  }
 
   loadClientes(): void {
     this.clienteService.obtenerClientesPorEstado('ACTIVO').subscribe({

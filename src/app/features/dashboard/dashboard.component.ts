@@ -1,5 +1,5 @@
-import { Component, OnInit, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -39,6 +39,8 @@ const ROLES_ADMINISTRACION_CAJA = ['ROLE_PRESIDENTE', 'ROLE_SECRETARIO', 'ROLE_A
 })
 export class DashboardComponent implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   cargando: boolean = true;
 
   // Vista cajero
@@ -56,11 +58,7 @@ export class DashboardComponent implements OnInit {
     private route: ActivatedRoute,
     private messageService: MessageService,
     private cierresDeCajaService: CierresDeCajaService
-  ) {
-    afterNextRender(() => {
-      this.cargarDatos();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     // roleGuard redirige aquí con este query param cuando el usuario intenta entrar
@@ -73,6 +71,10 @@ export class DashboardComponent implements OnInit {
         life: 5000
       });
       this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    }
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.cargarDatos();
     }
   }
 

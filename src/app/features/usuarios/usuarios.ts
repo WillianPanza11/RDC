@@ -1,5 +1,5 @@
-import { Component, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Header } from '../header/header';
 import { Toast } from 'primeng/toast';
@@ -34,7 +34,9 @@ import { ResetearPasswordDialog } from './resetear-password-dialog/resetear-pass
   providers: [MessageService, ConfirmationService, UsuariosService],
   templateUrl: './usuarios.html',
 })
-export class Usuarios {
+export class Usuarios implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   usuarios: UsuarioResponseSimpleDTO[] = [];
   cargando: boolean = true;
@@ -47,10 +49,12 @@ export class Usuarios {
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
     private usuariosService: UsuariosService
-  ) {
-    afterNextRender(() => {
+  ) { }
+
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
       this.loadUsuarios();
-    });
+    }
   }
 
   loadUsuarios(): void {

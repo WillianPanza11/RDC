@@ -1,5 +1,5 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
@@ -38,6 +38,8 @@ interface Column {
 })
 export class TransaccionesRealizadas implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   transacciones: TransaccionAhorroResponseDTO[] = [];
   transaccionesFiltradas: TransaccionAhorroResponseDTO[] = [];
   cargando: boolean = true;
@@ -70,14 +72,16 @@ export class TransaccionesRealizadas implements OnInit {
     private cuentaService: CuentasDeAhorroService,
     private route: ActivatedRoute,
     private router: Router
-  ) {
-    afterNextRender(() => {
-      this.loadCuentas();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initializeColumns();
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.loadCuentas();
 
     const clienteIdParam = this.route.snapshot.queryParamMap.get('clienteId');
     if (clienteIdParam) {

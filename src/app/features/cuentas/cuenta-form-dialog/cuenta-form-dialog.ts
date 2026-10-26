@@ -1,5 +1,5 @@
-import { Component, EventEmitter, OnInit, Output, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, OnInit, Output, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
@@ -27,6 +27,8 @@ import { firstValueFrom } from 'rxjs';
 })
 export class CuentaFormDialog implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   @Output() guardado = new EventEmitter<void>();
 
   visible: boolean = false;
@@ -48,11 +50,7 @@ export class CuentaFormDialog implements OnInit {
     private messageService: MessageService,
     private cuentaService: CuentasDeAhorroService,
     private clienteService: ClienteControllerService
-  ) {
-    afterNextRender(() => {
-      this.loadClientes();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.estados = [
@@ -65,6 +63,10 @@ export class CuentaFormDialog implements OnInit {
       { label: 'Ahorro', value: 'AHORRO' },
       { label: 'Corriente', value: 'CORRIENTE' }
     ];
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadClientes();
+    }
   }
 
   loadClientes(): void {

@@ -1,5 +1,5 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -73,6 +73,8 @@ const ORIGENES: { [key: string]: { label: string; path: string } } = {
 })
 export class ClienteDetalle implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   idCliente!: number;
 
   // Fase 2: de dónde vino el usuario, para el breadcrumb "Volver a [módulo]"
@@ -124,23 +126,7 @@ export class ClienteDetalle implements OnInit {
     private pagosService: PagosDePrstamosService,
     private transaccionService: TransaccionesDeAhorroService,
     private validationService: ValidationService
-  ) {
-    afterNextRender(() => {
-      const idParam = this.route.snapshot.paramMap.get('id');
-      const id = Number(idParam);
-      if (!idParam || Number.isNaN(id) || id <= 0) {
-        this.enviarMensajeError('Cliente no válido');
-        this.router.navigate(['/clientes']);
-        return;
-      }
-      this.idCliente = id;
-      this.cargarCliente();
-      this.cargarCuentas();
-      this.cargarPrestamos();
-      this.cargarPagos();
-      this.cargarClienteEnMora();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.estados = [
@@ -154,6 +140,22 @@ export class ClienteDetalle implements OnInit {
     const origen = (origenParam && ORIGENES[origenParam]) || ORIGENES['clientes'];
     this.origenLabel = origen.label;
     this.origenPath = origen.path;
+
+    if (isPlatformBrowser(this.platformId)) {
+      const idParam = this.route.snapshot.paramMap.get('id');
+      const id = Number(idParam);
+      if (!idParam || Number.isNaN(id) || id <= 0) {
+        this.enviarMensajeError('Cliente no válido');
+        this.router.navigate(['/clientes']);
+        return;
+      }
+      this.idCliente = id;
+      this.cargarCliente();
+      this.cargarCuentas();
+      this.cargarPrestamos();
+      this.cargarPagos();
+      this.cargarClienteEnMora();
+    }
   }
 
   volver(): void {

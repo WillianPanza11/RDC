@@ -1,5 +1,5 @@
-import { Component, ViewChild, afterNextRender } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Header } from '../../header/header';
 import { Toast } from 'primeng/toast';
@@ -28,7 +28,9 @@ import { CerrarCajaDialog } from '../cerrar-caja-dialog/cerrar-caja-dialog';
   providers: [MessageService, ConfirmationService, CierresDeCajaService, MovimientosDeCajaService],
   templateUrl: './mi-caja.html',
 })
-export class MiCaja {
+export class MiCaja implements OnInit {
+
+  private platformId = inject(PLATFORM_ID);
 
   @ViewChild(CerrarCajaDialog) cerrarCajaDialog!: CerrarCajaDialog;
 
@@ -45,15 +47,16 @@ export class MiCaja {
     private cierresDeCajaService: CierresDeCajaService,
     private movimientosDeCajaService: MovimientosDeCajaService,
     private router: Router
-  ) {
-    // afterNextRender (no ngOnInit): igual que en el resto del proyecto (Clientes, Pagos, Prestamos),
-    // para no disparar estas llamadas HTTP durante el prerender SSR, donde no hay sesión.
-    // Como MiCaja es un componente de ruta perezosa, cada vez que el cajero vuelve a /caja
-    // (desde /prestamos o /cuentas) se crea una instancia nueva y este bloque se vuelve a ejecutar.
-    afterNextRender(() => {
+  ) { }
+
+  ngOnInit(): void {
+    // Solo en el navegador (no durante el prerender SSR, donde no hay sesión). Como
+    // MiCaja es un componente de ruta perezosa, cada vez que el cajero vuelve a /caja
+    // (desde /prestamos o /cuentas) se crea una instancia nueva y ngOnInit se vuelve a ejecutar.
+    if (isPlatformBrowser(this.platformId)) {
       this.cargarEstado();
       this.cargarMovimientosHoy();
-    });
+    }
   }
 
   cargarEstado(): void {

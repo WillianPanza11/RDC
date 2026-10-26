@@ -1,6 +1,6 @@
-import { Component, OnInit, ViewChild, afterNextRender } from '@angular/core';
+import { Component, OnInit, ViewChild, PLATFORM_ID, inject } from '@angular/core';
 import { CuentaFormDialog } from './cuenta-form-dialog/cuenta-form-dialog';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Header } from "../header/header";
 import { Toast } from 'primeng/toast';
@@ -42,6 +42,8 @@ interface Column {
 })
 export class Cuentas implements OnInit {
 
+  private platformId = inject(PLATFORM_ID);
+
   cuentas: CuentaAhorroResponseDTO[] = [];
   selectedCuentas: CuentaAhorroResponseDTO[] = [];
   cargando: boolean = true;
@@ -64,17 +66,16 @@ export class Cuentas implements OnInit {
     private cuentaService: CuentasDeAhorroService,
     private transaccionService: TransaccionesDeAhorroService,
     private router: Router
-  ) {
-    // Ejecutar loadCuentas solo en el navegador (después de la hidratación SSR)
-    afterNextRender(() => {
-      this.loadCuentas();
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
     this.initializeTiposTransaccion();
     this.initializeMetodosPago();
     this.initializeColumns();
+
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadCuentas();
+    }
   }
 
   private initializeTiposTransaccion(): void {
